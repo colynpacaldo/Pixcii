@@ -113,10 +113,71 @@ public sealed class ProjectService(IDbContextFactory<AppDbContext> dbFactory)
         await tx.CommitAsync(ct);
     }
 
+    public async Task<StudioProject> UpdateProjectMetadataAsync(
+        Guid projectId,
+        string title,
+        string authorName,
+        ProjectMode mode,
+        int width,
+        int height,
+        int fps,
+        string paletteName,
+        string characterRamp,
+        bool isPublic,
+        CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+
+        var project = await db.StudioProjects
+            .FirstOrDefaultAsync(p => p.Id == projectId, ct)
+            ?? throw new KeyNotFoundException($"StudioProject '{projectId}' was not found.");
+
+        project.Title = string.IsNullOrWhiteSpace(title) ? "Untitled Project" : title.Trim();
+        project.AuthorName = string.IsNullOrWhiteSpace(authorName) ? "Anonymous" : authorName.Trim();
+        project.Mode = mode;
+        project.Width = width;
+        project.Height = height;
+        project.Fps = Math.Clamp(fps, 1, 60);
+        project.PaletteName = paletteName;
+        project.CharacterRamp = characterRamp;
+        project.IsPublic = isPublic;
+        project.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync(ct);
+        return project;
+    }
+
+    public async Task<Dictionary<string, int>> AddReactionAsync(
+        Guid projectId,
+        string reactionType,
+        CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+
+        var normalized = string.IsNullOrWhiteSpace(reactionType) ? "Art" : reactionType.Trim();
+        db.ProjectReactions.Add(new ProjectReaction
+        {
+            Id = Guid.NewGuid(),
+            StudioProjectId = projectId,
+            ReactionType = normalized,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await db.SaveChangesAsync(ct);
+
+        return await db.ProjectReactions
+            .AsNoTracking()
+            .Where(r => r.StudioProjectId == projectId)
+            .GroupBy(r => r.ReactionType)
+            .Select(g => new { Type = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Type, x => x.Count, ct);
+    }
+
     public async Task<IReadOnlyList<StudioProject>> GetPublicGalleryAsync(
         int page = 1,
         int pageSize = 24,
         ProjectMode? mode = null,
+        bool mostPopular = false,
         CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
@@ -133,11 +194,14 @@ public sealed class ProjectService(IDbContextFactory<AppDbContext> dbFactory)
             query = query.Where(p => p.Mode == mode.Value);
         }
 
-        return await query
-            .OrderByDescending(p => p.UpdatedAt)
+        IOrderedQueryable<StudioProject> ordered = mostPopular
+            ? query.OrderByDescending(p => p.Reactions.Count).ThenByDescending(p => p.UpdatedAt)
+            : query.OrderByDescending(p => p.UpdatedAt);
+
+        return await ordered
             .Skip((safePage - 1) * safePageSize)
             .Take(safePageSize)
-            .Include(p => p.ArtFrames.OrderBy(f => f.OrderIndex).Take(1))
+            .Include(p => p.ArtFrames.OrderBy(f => f.OrderIndex))
             .Include(p => p.Reactions)
             .ToListAsync(ct);
     }

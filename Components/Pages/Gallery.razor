@@ -1,0 +1,351 @@
+@page "/gallery"
+@implements IDisposable
+@inject ProjectService ProjectService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Pixcii — Class Showcase Gallery</PageTitle>
+
+<div class="flex h-full w-full flex-col overflow-hidden">
+    @* ===================================================================== *@
+    @* GALLERY HEADER & FILTER BAR                                           *@
+    @* ===================================================================== *@
+    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[#232838] bg-[#10131c] px-6 py-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <MudIcon Icon="@Icons.Material.Filled.Collections" Color="Color.Primary" />
+                <h1 class="m-0 font-mono text-lg font-bold tracking-wider text-slate-100">
+                    CLASS SHOWCASE GALLERY
+                </h1>
+            </div>
+            <p class="mt-0.5 font-mono text-xs text-slate-400">
+                React to classmates&apos; animations or fork any project into your Studio with 1-click Remix.
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <div class="w-48">
+                <MudTextField T="string"
+                              @bind-Value="_remixAuthorName"
+                              Label="Your Name (for Remixes)"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Placeholder="Classmate" />
+            </div>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="LoadGalleryAsync">
+                Refresh
+            </MudButton>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Brush"
+                       Href="/studio">
+                Open Studio
+            </MudButton>
+        </div>
+    </div>
+
+    @* Filter Chips *@
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#232838] bg-[#0e1118] px-6 py-2.5">
+        <MudChipSet T="string"
+                    SelectedValue="_selectedFilter"
+                    SelectedValueChanged="OnFilterChanged"
+                    SelectionMode="SelectionMode.SingleSelection"
+                    CheckMark="false">
+            <MudChip Value="@("All")" Text="All Projects" Color="Color.Primary" Variant="Variant.Outlined" />
+            <MudChip Value="@("Ascii")" Text="ASCII Only" Color="Color.Info" Variant="Variant.Outlined" />
+            <MudChip Value="@("PixelArt")" Text="Pixel Art Only" Color="Color.Secondary" Variant="Variant.Outlined" />
+            <MudChip Value="@("Popular")" Text="Most Popular" Color="Color.Tertiary" Variant="Variant.Outlined" />
+        </MudChipSet>
+
+        <span class="font-mono text-xs text-slate-400">
+            @_projects.Count public @(_projects.Count == 1 ? "creation" : "creations")
+        </span>
+    </div>
+
+    @* ===================================================================== *@
+    @* RESPONSIVE CARD GRID                                                  *@
+    @* ===================================================================== *@
+    <div class="pixcii-workspace-dots flex-1 overflow-y-auto p-6">
+        @if (_isLoading)
+        {
+            <div class="flex h-64 items-center justify-center">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+            </div>
+        }
+        else if (_projects.Count == 0)
+        {
+            <div class="mx-auto mt-12 flex max-w-md flex-col items-center gap-3 rounded-lg border border-[#232838] bg-[#10131c] p-8 text-center">
+                <MudIcon Icon="@Icons.Material.Outlined.AutoAwesomeMotion" Size="Size.Large" Color="Color.Primary" />
+                <div class="font-mono text-sm font-semibold text-slate-200">No Public Animations Yet</div>
+                <p class="text-xs text-slate-400">
+                    Create an ASCII or Pixel Art loop in the Studio and click Save &rarr; Publish to Class Gallery to feature it here!
+                </p>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/studio">
+                    Create First Animation
+                </MudButton>
+            </div>
+        }
+        else
+        {
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                @foreach (var project in _projects)
+                {
+                    var orderedFrames = project.ArtFrames.OrderBy(f => f.OrderIndex).ToList();
+                    var activeFrame = orderedFrames.Count > 0
+                        ? orderedFrames[_loopTick % orderedFrames.Count]
+                        : null;
+
+                    <MudCard @key="project.Id"
+                             Elevation="0"
+                             Class="flex flex-col overflow-hidden rounded-lg border border-[#232838] bg-[#141824]">
+
+                        @* Live Looping Mini-Preview *@
+                        <div class="pixcii-checkerboard relative flex h-48 w-full items-center justify-center overflow-hidden border-b border-[#232838] p-3">
+                            @if (activeFrame is not null && project.Mode == ProjectMode.PixelArt && !string.IsNullOrEmpty(activeFrame.PixelDataBase64))
+                            {
+                                <img src="@($"data:image/png;base64,{activeFrame.PixelDataBase64}")"
+                                     alt="@project.Title"
+                                     class="pixelated max-h-40 max-w-full object-contain"
+                                     style="image-rendering: pixelated;" />
+                            }
+                            else if (activeFrame is not null && project.Mode == ProjectMode.Ascii)
+                            {
+                                var ascii = GetCachedAsciiPreview(activeFrame);
+                                if (ascii is not null)
+                                {
+                                    <pre class="m-0 overflow-hidden font-mono text-[5px] leading-[1.08] whitespace-pre select-none">@((MarkupString)ascii.ColoredHtml)</pre>
+                                }
+                            }
+                            else
+                            {
+                                <span class="font-mono text-xs text-slate-500">Empty Frame</span>
+                            }
+
+                            @* Top-Right Mode & Frame Count Badges *@
+                            <div class="absolute top-2 right-2 flex items-center gap-1.5">
+                                <span class="@(project.Mode == ProjectMode.Ascii ? "border-cyan-400/40 bg-cyan-400/15 text-cyan-300" : "border-amber-400/40 bg-amber-400/15 text-amber-300") rounded border px-1.5 py-0.5 font-mono text-[10px] font-semibold backdrop-blur-sm">
+                                    @(project.Mode == ProjectMode.Ascii ? "ASCII" : "PIXEL")
+                                </span>
+                                <span class="rounded border border-[#232838] bg-[#0b0d12]/85 px-1.5 py-0.5 font-mono text-[10px] text-slate-300">
+                                    @orderedFrames.Count f &middot; @project.Fps FPS
+                                </span>
+                            </div>
+
+                            @if (project.RemixedFromId.HasValue)
+                            {
+                                <span class="absolute top-2 left-2 rounded border border-purple-400/40 bg-purple-400/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-purple-300">
+                                    REMIX
+                                </span>
+                            }
+                        </div>
+
+                        @* Card Metadata *@
+                        <div class="flex flex-1 flex-col justify-between gap-3 p-3.5">
+                            <div>
+                                <div class="truncate font-mono text-sm font-bold text-slate-100" title="@project.Title">
+                                    @project.Title
+                                </div>
+                                <div class="mt-0.5 flex items-center justify-between font-mono text-[11px] text-slate-400">
+                                    <span>by <span class="text-slate-200">@project.AuthorName</span></span>
+                                    <span>@project.UpdatedAt.ToLocalTime().ToString("MMM d, HH:mm")</span>
+                                </div>
+                            </div>
+
+                            @* Quick Reactions + Remix in Studio *@
+                            <div class="flex flex-col gap-2.5">
+                                <div class="flex items-center gap-1.5">
+                                    @foreach (var reaction in _reactionButtons)
+                                    {
+                                        var count = GetReactionCount(project.Id, reaction.Key);
+                                        <button type="button"
+                                                @onclick="() => ReactAsync(project.Id, reaction.Key)"
+                                                class="flex flex-1 items-center justify-center gap-1 rounded border border-[#232838] bg-[#0e1118] px-2 py-1 font-mono text-xs text-slate-200 transition-colors hover:border-cyan-400/50 hover:bg-cyan-400/10 cursor-pointer">
+                                            <span>@reaction.Emoji</span>
+                                            <span class="text-cyan-300">@count</span>
+                                        </button>
+                                    }
+                                </div>
+
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.ForkRight"
+                                           Disabled="@(_forkingProjectId == project.Id)"
+                                           OnClick="() => RemixInStudioAsync(project.Id)">
+                                    @(_forkingProjectId == project.Id ? "Forking..." : "Remix in Studio")
+                                </MudButton>
+                            </div>
+                        </div>
+                    </MudCard>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly (string Key, string Emoji)[] _reactionButtons =
+    [
+        ("Fire", "🔥"),
+        ("Art", "🎨"),
+        ("Funny", "😂")
+    ];
+
+    private IReadOnlyList<StudioProject> _projects = [];
+    private Dictionary<Guid, Dictionary<string, int>> _reactionCounts = [];
+    private readonly Dictionary<Guid, AsciiResult?> _asciiPreviewCache = [];
+
+    private string _selectedFilter = "All";
+    private string _remixAuthorName = "Classmate";
+    private bool _isLoading = true;
+    private Guid? _forkingProjectId;
+
+    private int _loopTick;
+    private CancellationTokenSource? _previewLoopCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadGalleryAsync();
+        StartPreviewLoop();
+    }
+
+    private async Task OnFilterChanged(string? filter)
+    {
+        _selectedFilter = string.IsNullOrWhiteSpace(filter) ? "All" : filter;
+        await LoadGalleryAsync();
+    }
+
+    private async Task LoadGalleryAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            ProjectMode? modeFilter = _selectedFilter switch
+            {
+                "Ascii" => ProjectMode.Ascii,
+                "PixelArt" => ProjectMode.PixelArt,
+                _ => null
+            };
+            var mostPopular = _selectedFilter == "Popular";
+
+            _projects = await ProjectService.GetPublicGalleryAsync(
+                page: 1,
+                pageSize: 48,
+                mode: modeFilter,
+                mostPopular: mostPopular);
+
+            _asciiPreviewCache.Clear();
+            _reactionCounts = _projects.ToDictionary(
+                p => p.Id,
+                p => p.Reactions
+                    .GroupBy(r => r.ReactionType)
+                    .ToDictionary(g => g.Key, g => g.Count()));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load gallery: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private int GetReactionCount(Guid projectId, string reactionType)
+    {
+        if (_reactionCounts.TryGetValue(projectId, out var counts) &&
+            counts.TryGetValue(reactionType, out var count))
+        {
+            return count;
+        }
+        return 0;
+    }
+
+    private async Task ReactAsync(Guid projectId, string reactionType)
+    {
+        try
+        {
+            var updated = await ProjectService.AddReactionAsync(projectId, reactionType);
+            _reactionCounts[projectId] = updated;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Reaction failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RemixInStudioAsync(Guid projectId)
+    {
+        _forkingProjectId = projectId;
+        StateHasChanged();
+
+        try
+        {
+            var author = string.IsNullOrWhiteSpace(_remixAuthorName) ? "Classmate" : _remixAuthorName.Trim();
+            var forked = await ProjectService.ForkProjectAsync(projectId, author);
+            Navigation.NavigateTo($"/studio/{forked.Id}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to remix project: {ex.Message}", Severity.Error);
+            _forkingProjectId = null;
+        }
+    }
+
+    private AsciiResult? GetCachedAsciiPreview(ArtFrame frame)
+    {
+        if (_asciiPreviewCache.TryGetValue(frame.Id, out var cached))
+        {
+            return cached;
+        }
+
+        var parsed = FrameSerialization.DeserializeAscii(
+            frame.AsciiContent,
+            MediaConversionService.BuildAsciiTextAndHtml);
+        _asciiPreviewCache[frame.Id] = parsed;
+        return parsed;
+    }
+
+    private void StartPreviewLoop()
+    {
+        _previewLoopCts?.Cancel();
+        _previewLoopCts?.Dispose();
+        _previewLoopCts = new CancellationTokenSource();
+        _ = RunPreviewLoopAsync(_previewLoopCts.Token);
+    }
+
+    private async Task RunPreviewLoopAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(160));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                if (_projects.Count > 0)
+                {
+                    _loopTick++;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on dispose.
+        }
+    }
+
+    public void Dispose()
+    {
+        _previewLoopCts?.Cancel();
+        _previewLoopCts?.Dispose();
+    }
+}

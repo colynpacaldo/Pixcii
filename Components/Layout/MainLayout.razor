@@ -41,26 +41,31 @@
 
         <MudSpacer />
 
-        @* Mode Switcher Placeholder *@
-        <div class="hidden lg:flex items-center gap-1 mr-3 rounded border border-[#232838] bg-[#141824] p-0.5">
-            @foreach (var mode in Enum.GetValues<CanvasMode>())
-            {
-                var isActive = StudioState.Metadata.Mode == mode;
-                <button type="button"
-                        @onclick="() => StudioState.SetMode(mode)"
-                        class="@(isActive ? "bg-cyan-400/15 text-cyan-300 border-cyan-400/40" : "text-slate-400 border-transparent hover:text-slate-200") rounded border px-2 py-0.5 font-mono text-[11px] transition-colors cursor-pointer">
-                    @mode.ToString().ToUpperInvariant()
-                </button>
-            }
+        @* Studio & Gallery Navigation *@
+        <div class="flex items-center gap-1 mr-3">
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Inherit"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Brush"
+                       Href="/studio">
+                Studio
+            </MudButton>
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Collections"
+                       Href="/gallery">
+                Class Gallery
+            </MudButton>
         </div>
 
-        @* Save & Export Placeholders *@
+        @* Save & Export Actions *@
         <div class="flex items-center gap-2">
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Default"
                        Size="Size.Small"
                        StartIcon="@Icons.Material.Filled.Save"
-                       OnClick="HandleSavePlaceholder">
+                       OnClick="HandleSaveAsync">
                 Save
             </MudButton>
 
@@ -203,9 +208,9 @@
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
-    private void HandleSavePlaceholder()
+    private async Task HandleSaveAsync()
     {
-        Snackbar.Add($"Saved {StudioState.Metadata.ProjectName} (placeholder).", Severity.Success);
+        await StudioState.RequestSaveAsync();
     }
 
     private async Task HandleExportAsync()

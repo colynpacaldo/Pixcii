@@ -1,10 +1,12 @@
 @page "/"
 @page "/studio"
+@page "/studio/{ProjectId:guid}"
 @implements IDisposable
 @inject MediaConversionService ConversionService
 @inject AnimationFxService FxService
 @inject ProjectService ProjectService
 @inject StudioStateService StudioState
+@inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
@@ -316,6 +318,15 @@
                 </div>
 
                 <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Save"
+                           Disabled="@(!HasActiveCanvas)"
+                           OnClick="OpenSaveDialogAsync">
+                    Save
+                </MudButton>
+
+                <MudButton Variant="Variant.Outlined"
                            Color="Color.Secondary"
                            Size="Size.Small"
                            StartIcon="@Icons.Material.Filled.IosShare"
@@ -486,10 +497,16 @@
 </div>
 
 @code {
+    [Parameter] public Guid? ProjectId { get; set; }
+
     private const long MaxUploadSizeBytes = 5 * 1024 * 1024; // 5 MB
 
     private static readonly char[] _quickAsciiGlyphs = ['@', '#', '%', '*', '+', '=', '-', ':', '.', ' '];
 
+    private Guid? _loadedProjectId;
+    private string _projectTitle = "Untitled Sprite";
+    private string _authorName = "Classmate";
+    private bool _isPublic = true;
     private ProjectMode _mode = ProjectMode.Ascii;
     private byte[]? _sourceBytes;
     private string _sourceFileName = "sample-synthwave.png";
@@ -537,6 +554,7 @@
     protected override async Task OnInitializedAsync()
     {
         StudioState.OnFrameSelected += HandleFrameSelected;
+        StudioState.RegisterSaveHandler(OpenSaveDialogAsync);
 
         _palettes = await ProjectService.GetPalettesAsync();
         if (_palettes.Count > 0)
@@ -545,7 +563,26 @@
             _selectedPaletteId = pico8.Id;
         }
 
-        await LoadSampleImageAsync();
+        if (!ProjectId.HasValue)
+        {
+            await LoadSampleImageAsync();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ProjectId.HasValue && ProjectId.Value != _loadedProjectId)
+        {
+            await LoadSavedProjectAsync(ProjectId.Value);
+        }
+        else if (!ProjectId.HasValue && _loadedProjectId.HasValue)
+        {
+            _loadedProjectId = null;
+            _projectTitle = "Untitled Sprite";
+            _isPublic = true;
+            StudioState.ReplaceFrames([]);
+            await LoadSampleImageAsync();
+        }
     }
 
     private async Task LoadSampleImageAsync()
@@ -791,6 +828,219 @@
         }
     }
 
+    private async Task LoadSavedProjectAsync(Guid projectId)
+    {
+        var project = await ProjectService.GetProjectWithFramesAsync(projectId);
+        if (project is null)
+        {
+            Snackbar.Add("Project not found.", Severity.Warning);
+            await LoadSampleImageAsync();
+            return;
+        }
+
+        _loadedProjectId = project.Id;
+        _projectTitle = project.Title;
+        _authorName = project.AuthorName;
+        _isPublic = project.IsPublic;
+        _mode = project.Mode;
+        _customRamp = project.CharacterRamp;
+        _sourceFileName = $"{project.Title} (Loaded)";
+
+        var matchedPalette = _palettes.FirstOrDefault(p =>
+            string.Equals(p.Name, project.PaletteName, StringComparison.OrdinalIgnoreCase));
+        if (matchedPalette is not null)
+        {
+            _selectedPaletteId = matchedPalette.Id;
+        }
+
+        StudioState.SetFps(Math.Clamp(project.Fps, 1, 24));
+        StudioState.SetProjectMetadata(
+            project.Title,
+            project.Width,
+            project.Height,
+            StudioState.Fps,
+            project.Mode == ProjectMode.Ascii ? CanvasMode.Ascii : CanvasMode.Pixel);
+
+        var loadedFrames = project.ArtFrames
+            .OrderBy(f => f.OrderIndex)
+            .Select(f => new ArtFrame
+            {
+                Id = f.Id,
+                StudioProjectId = project.Id,
+                OrderIndex = f.OrderIndex,
+                AsciiContent = f.AsciiContent,
+                PixelDataBase64 = f.PixelDataBase64,
+                DurationMs = f.DurationMs
+            })
+            .ToList();
+
+        StudioState.ReplaceFrames(loadedFrames);
+        if (loadedFrames.Count > 0)
+        {
+            ApplyFrameToCanvas(loadedFrames[0]);
+        }
+
+        Snackbar.Add(
+            project.RemixedFromId.HasValue
+                ? $"Loaded remix '{project.Title}' into Studio!"
+                : $"Loaded '{project.Title}'.",
+            Severity.Info);
+    }
+
+    private async Task OpenSaveDialogAsync()
+    {
+        if (!HasActiveCanvas && StudioState.Frames.Count == 0)
+        {
+            Snackbar.Add("Create or convert an image before saving.", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters<SaveProjectDialog>
+        {
+            { x => x.InitialTitle, _projectTitle },
+            { x => x.InitialAuthorName, _authorName },
+            { x => x.InitialIsPublic, _isPublic }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<SaveProjectDialog>("Save Pixcii Project", parameters, options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled || result.Data is not SaveProjectDialog.SaveProjectResult saveReq)
+        {
+            return;
+        }
+
+        try
+        {
+            var framesToSave = BuildFramesForSave();
+            var (width, height) = GetCurrentDimensions();
+            var paletteName = _palettes.FirstOrDefault(p => p.Id == _selectedPaletteId)?.Name ?? "PICO-8";
+            var ramp = _rampPreset == "Custom" ? _customRamp : ResolveRamp(_rampPreset);
+
+            StudioProject saved;
+            if (_loadedProjectId.HasValue)
+            {
+                saved = await ProjectService.UpdateProjectMetadataAsync(
+                    _loadedProjectId.Value,
+                    saveReq.Title,
+                    saveReq.AuthorName,
+                    _mode,
+                    width,
+                    height,
+                    StudioState.Fps,
+                    paletteName,
+                    ramp,
+                    saveReq.IsPublic);
+            }
+            else
+            {
+                saved = await ProjectService.CreateProjectAsync(
+                    saveReq.Title,
+                    saveReq.AuthorName,
+                    _mode,
+                    width,
+                    height,
+                    StudioState.Fps,
+                    paletteName,
+                    ramp,
+                    saveReq.IsPublic);
+            }
+
+            await ProjectService.SaveFramesAsync(saved.Id, framesToSave);
+
+            _loadedProjectId = saved.Id;
+            _projectTitle = saved.Title;
+            _authorName = saved.AuthorName;
+            _isPublic = saved.IsPublic;
+            _sourceFileName = saved.Title;
+
+            StudioState.SetProjectMetadata(
+                saved.Title,
+                width,
+                height,
+                StudioState.Fps,
+                _mode == ProjectMode.Ascii ? CanvasMode.Ascii : CanvasMode.Pixel);
+
+            Snackbar.Add(
+                saved.IsPublic
+                    ? $"Saved '{saved.Title}' and published to Class Gallery!"
+                    : $"Saved '{saved.Title}' to database.",
+                Severity.Success);
+
+            if (ProjectId != saved.Id)
+            {
+                Navigation.NavigateTo($"/studio/{saved.Id}", replace: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to save project: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private List<ArtFrame> BuildFramesForSave()
+    {
+        if (StudioState.Frames.Count > 0)
+        {
+            return StudioState.Frames.ToList();
+        }
+
+        var durationMs = Math.Max(40, 1000 / StudioState.Fps);
+        if (_mode == ProjectMode.Ascii && _asciiResult is not null)
+        {
+            return [FrameSerialization.ToArtFrame(_asciiResult, 0, durationMs)];
+        }
+        if (_mode == ProjectMode.PixelArt && _pixelResult is not null)
+        {
+            return [FrameSerialization.ToArtFrame(_pixelResult, 0, durationMs)];
+        }
+        return [];
+    }
+
+    private (int Width, int Height) GetCurrentDimensions()
+    {
+        if (_mode == ProjectMode.Ascii && _asciiResult is not null)
+        {
+            return (_asciiResult.Columns, _asciiResult.Rows);
+        }
+        if (_mode == ProjectMode.PixelArt && _pixelResult is not null)
+        {
+            return (_pixelResult.Width, _pixelResult.Height);
+        }
+        return (32, 32);
+    }
+
+    private void ApplyFrameToCanvas(ArtFrame frame)
+    {
+        if (_mode == ProjectMode.Ascii)
+        {
+            var parsed = FrameSerialization.DeserializeAscii(
+                frame.AsciiContent,
+                MediaConversionService.BuildAsciiTextAndHtml,
+                _asciiColorMode);
+            if (parsed is not null)
+            {
+                _asciiResult = parsed;
+            }
+        }
+        else
+        {
+            var grid = FrameSerialization.DeserializePixelGrid(frame.AsciiContent);
+            if (grid is not null)
+            {
+                _pixelResult = MediaConversionService.RenderHexGridToPixelArt(grid);
+            }
+        }
+
+        StudioState.SetActiveCanvas(_mode, _asciiResult, _pixelResult);
+    }
+
     private Task OpenExportDialogAsync()
     {
         StudioState.SetActiveCanvas(_mode, _asciiResult, _pixelResult);
@@ -849,27 +1099,7 @@
         var frame = StudioState.Frames[index];
         _ = InvokeAsync(() =>
         {
-            if (_mode == ProjectMode.Ascii)
-            {
-                var parsed = FrameSerialization.DeserializeAscii(
-                    frame.AsciiContent,
-                    MediaConversionService.BuildAsciiTextAndHtml,
-                    _asciiColorMode);
-                if (parsed is not null)
-                {
-                    _asciiResult = parsed;
-                }
-            }
-            else
-            {
-                var grid = FrameSerialization.DeserializePixelGrid(frame.AsciiContent);
-                if (grid is not null)
-                {
-                    _pixelResult = MediaConversionService.RenderHexGridToPixelArt(grid);
-                }
-            }
-
-            StudioState.SetActiveCanvas(_mode, _asciiResult, _pixelResult);
+            ApplyFrameToCanvas(frame);
             StateHasChanged();
         });
     }
@@ -960,6 +1190,7 @@
     public void Dispose()
     {
         StudioState.OnFrameSelected -= HandleFrameSelected;
+        StudioState.RegisterSaveHandler(null);
         _debounceCts?.Cancel();
         _debounceCts?.Dispose();
     }

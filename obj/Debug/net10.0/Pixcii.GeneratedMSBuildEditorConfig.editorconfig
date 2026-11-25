@@ -46,6 +46,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xFcnJvci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Users/Lenovo/.gemini/antigravity/scratch/Pixcii/Components/Pages/Gallery.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xHYWxsZXJ5LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Users/Lenovo/.gemini/antigravity/scratch/Pixcii/Components/Pages/NotFound.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xOb3RGb3VuZC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
@@ -64,6 +68,10 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Users/Lenovo/.gemini/antigravity/scratch/Pixcii/Components/Studio/ExportDialog.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTdHVkaW9cRXhwb3J0RGlhbG9nLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Lenovo/.gemini/antigravity/scratch/Pixcii/Components/Studio/SaveProjectDialog.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xTdHVkaW9cU2F2ZVByb2plY3REaWFsb2cucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/Lenovo/.gemini/antigravity/scratch/Pixcii/Components/_Imports.razor]

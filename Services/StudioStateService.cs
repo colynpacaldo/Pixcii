@@ -7,6 +7,7 @@ public sealed class StudioStateService
 {
     public event Action? OnChange;
     public event Action<int>? OnFrameSelected;
+    private Func<Task>? _saveHandler;
 
     private readonly List<ArtFrame> _frames = [];
 
@@ -81,6 +82,16 @@ public sealed class StudioStateService
         CurrentAscii = ascii;
         CurrentPixel = pixel;
     }
+
+    public void SetProjectMetadata(string title, int width, int height, int fps, CanvasMode mode)
+    {
+        Metadata = new CanvasMetadata(title, width, height, Math.Clamp(fps, 1, 24), mode);
+        NotifyStateChanged();
+    }
+
+    public void RegisterSaveHandler(Func<Task>? handler) => _saveHandler = handler;
+
+    public Task RequestSaveAsync() => _saveHandler?.Invoke() ?? Task.CompletedTask;
 
     // -------------------------------------------------------------------------
     // Frame Management Actions

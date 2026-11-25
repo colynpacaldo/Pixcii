@@ -1,0 +1,85 @@
+@using System.ComponentModel.DataAnnotations
+
+<MudDialog>
+    <TitleContent>
+        <div class="flex items-center gap-2 font-mono">
+            <MudIcon Icon="@Icons.Material.Filled.Save" Color="Color.Primary" />
+            <span class="font-bold tracking-wider">SAVE PIXCII PROJECT</span>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        <div class="space-y-4 pt-1">
+            <MudTextField T="string"
+                          @bind-Value="_title"
+                          Label="Project Title"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          MaxLength="120"
+                          Immediate="true"
+                          Placeholder="e.g. Cyber Slime Idle" />
+
+            <MudTextField T="string"
+                          @bind-Value="_authorName"
+                          Label="Author Name"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          MaxLength="80"
+                          Immediate="true"
+                          Placeholder="Your name or handle" />
+
+            <div class="rounded border border-[#232838] bg-[#141824] p-3">
+                <MudSwitch T="bool"
+                           @bind-Value="_isPublic"
+                           Color="Color.Secondary"
+                           Label="Publish to Class Gallery" />
+                <div class="mt-1 font-mono text-[11px] text-slate-400">
+                    When enabled, classmates can view, react to, and remix this project in the Class Gallery.
+                </div>
+            </div>
+        </div>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Save"
+                   Disabled="@(string.IsNullOrWhiteSpace(_title) || string.IsNullOrWhiteSpace(_authorName))"
+                   OnClick="Submit">
+            Save Project
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public sealed record SaveProjectResult(string Title, string AuthorName, bool IsPublic);
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string InitialTitle { get; set; } = "Untitled Sprite";
+    [Parameter] public string InitialAuthorName { get; set; } = "Classmate";
+    [Parameter] public bool InitialIsPublic { get; set; } = true;
+
+    private string _title = string.Empty;
+    private string _authorName = string.Empty;
+    private bool _isPublic = true;
+
+    protected override void OnInitialized()
+    {
+        _title = InitialTitle;
+        _authorName = InitialAuthorName;
+        _isPublic = InitialIsPublic;
+    }
+
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(new SaveProjectResult(
+            _title.Trim(),
+            _authorName.Trim(),
+            _isPublic)));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
