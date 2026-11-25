@@ -1,0 +1,49 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background-color: #0b0d12;
+    color: #e2e8f0;
+    overflow: hidden;
+}
+
+#blazor-error-ui {
+    background: #2a1215;
+    color: #fecaca;
+    border-top: 1px solid #ef4444;
+    bottom: 0;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.65rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 2000;
+    font-size: 0.875rem;
+}
+
+#blazor-error-ui .reload {
+    color: #38bdf8;
+    text-decoration: underline;
+    margin-left: 0.5rem;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 1rem;
+    top: 0.65rem;
+}
+
+.blazor-error-boundary {
+    background-color: #2a1215;
+    border: 1px solid #ef4444;
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    color: #fecaca;
+}
+
+.blazor-error-boundary::after {
+    content: "An unexpected studio error has occurred.";
+}

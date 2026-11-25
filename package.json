@@ -1,0 +1,13 @@
+{
+  "name": "pixcii",
+  "private": true,
+  "description": "Pixcii - ASCII & Pixel Art Animation Studio",
+  "scripts": {
+    "css:build": "tailwindcss -i ./Styles/app.css -o ./wwwroot/css/tailwind.css --minify",
+    "css:watch": "tailwindcss -i ./Styles/app.css -o ./wwwroot/css/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.5",
+    "tailwindcss": "^4.3.5"
+  }
+}

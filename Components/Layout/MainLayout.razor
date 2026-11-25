@@ -1,0 +1,221 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject StudioStateService StudioState
+@inject ISnackbar Snackbar
+
+<MudThemeProvider IsDarkMode="true" Theme="StudioTheme.RetroDark" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout Class="h-screen w-screen overflow-hidden bg-[#0b0d12]">
+    @* Top Creative-Tool Toolbar *@
+    <MudAppBar Elevation="0" Dense="true" Class="border-b border-[#232838] px-2">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       Edge="Edge.Start"
+                       Size="Size.Small"
+                       OnClick="ToggleDrawer"
+                       aria-label="Toggle tool panel" />
+
+        <div class="flex items-center gap-2.5 ml-1">
+            <div class="flex h-7 w-7 items-center justify-center rounded border border-cyan-400/40 bg-cyan-400/10 font-mono text-sm font-bold text-cyan-300">
+                P#
+            </div>
+            <div class="flex items-baseline gap-2">
+                <span class="font-mono text-sm font-bold tracking-widest text-slate-100">PIXCII</span>
+                <span class="hidden sm:inline font-mono text-[10px] uppercase tracking-wider text-slate-400">
+                    ASCII &amp; Pixel Studio
+                </span>
+            </div>
+        </div>
+
+        <div class="hidden md:flex items-center gap-2 ml-6 rounded border border-[#232838] bg-[#141824] px-2.5 py-1 font-mono text-xs text-slate-300">
+            <span>@StudioState.Metadata.ProjectName</span>
+            <span class="text-slate-600">|</span>
+            <span class="text-cyan-400">@StudioState.Metadata.Width&times;@StudioState.Metadata.Height</span>
+            <span class="text-slate-600">|</span>
+            <span class="text-amber-400">@StudioState.Metadata.Fps FPS</span>
+        </div>
+
+        <MudSpacer />
+
+        @* Mode Switcher Placeholder *@
+        <div class="hidden lg:flex items-center gap-1 mr-3 rounded border border-[#232838] bg-[#141824] p-0.5">
+            @foreach (var mode in Enum.GetValues<CanvasMode>())
+            {
+                var isActive = StudioState.Metadata.Mode == mode;
+                <button type="button"
+                        @onclick="() => StudioState.SetMode(mode)"
+                        class="@(isActive ? "bg-cyan-400/15 text-cyan-300 border-cyan-400/40" : "text-slate-400 border-transparent hover:text-slate-200") rounded border px-2 py-0.5 font-mono text-[11px] transition-colors cursor-pointer">
+                    @mode.ToString().ToUpperInvariant()
+                </button>
+            }
+        </div>
+
+        @* Save & Export Placeholders *@
+        <div class="flex items-center gap-2">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="HandleSavePlaceholder">
+                Save
+            </MudButton>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.IosShare"
+                       OnClick="HandleExportPlaceholder">
+                Export
+            </MudButton>
+        </div>
+    </MudAppBar>
+
+    @* Left Tool Panel *@
+    <MudDrawer @bind-Open="_drawerOpen"
+               Variant="DrawerVariant.Persistent"
+               ClipMode="DrawerClipMode.Always"
+               Elevation="0"
+               Class="border-r border-[#232838]">
+        <div class="flex h-full flex-col justify-between p-3 select-none">
+            <div class="space-y-4">
+                <div>
+                    <div class="mb-2 px-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                        Drawing Tools
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        @foreach (var tool in _tools)
+                        {
+                            var isSelected = StudioState.ActiveTool == tool.Tool;
+                            <MudButton Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                                       Color="@(isSelected ? Color.Primary : Color.Default)"
+                                       Size="Size.Small"
+                                       StartIcon="@tool.Icon"
+                                       Class="justify-start text-xs"
+                                       OnClick="() => StudioState.SelectTool(tool.Tool)">
+                                @tool.Label
+                            </MudButton>
+                        }
+                    </div>
+                </div>
+
+                <MudDivider />
+
+                @* Active Ink & ASCII Glyph *@
+                <div class="space-y-2.5">
+                    <div class="px-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                        Active Ink &amp; Glyph
+                    </div>
+                    <div class="flex items-center gap-2 rounded border border-[#232838] bg-[#141824] p-2">
+                        <div class="h-8 w-8 shrink-0 rounded border border-white/20"
+                             style="@($"background-color: {StudioState.PrimaryColor};")">
+                        </div>
+                        <div class="flex flex-col leading-tight">
+                            <span class="font-mono text-xs text-slate-200">@StudioState.PrimaryColor</span>
+                            <span class="font-mono text-[11px] text-amber-400">Glyph: '@StudioState.ActiveAsciiGlyph'</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-6 gap-1">
+                        @foreach (var ch in _quickGlyphs)
+                        {
+                            var selected = StudioState.ActiveAsciiGlyph == ch;
+                            <button type="button"
+                                    @onclick="() => StudioState.SetActiveGlyph(ch)"
+                                    class="@(selected ? "border-cyan-400 bg-cyan-400/15 text-cyan-300" : "border-[#232838] bg-[#141824] text-slate-300 hover:border-slate-500") flex h-7 items-center justify-center rounded border font-mono text-xs cursor-pointer">
+                                @ch
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <MudDivider />
+
+                @* Viewport Controls *@
+                <div class="space-y-2">
+                    <div class="px-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                        Viewport
+                    </div>
+                    <MudSwitch T="bool"
+                               Value="StudioState.ShowGrid"
+                               ValueChanged="@(_ => StudioState.ToggleGrid())"
+                               Color="Color.Primary"
+                               Label="Pixel Grid"
+                               Size="Size.Small" />
+                </div>
+            </div>
+
+            <div class="rounded border border-[#232838] bg-[#141824] px-2.5 py-2 font-mono text-[11px] text-slate-400">
+                <div>Tool: <span class="text-cyan-300">@StudioState.ActiveTool</span></div>
+                <div>Mode: <span class="text-amber-300">@StudioState.Metadata.Mode</span></div>
+            </div>
+        </div>
+    </MudDrawer>
+
+    @* Tailwind-Styled Centered Canvas Workspace Area *@
+    <MudMainContent Class="flex h-screen flex-col overflow-hidden">
+        <div class="pixcii-workspace-dots flex flex-1 items-center justify-center overflow-auto p-6">
+            @Body
+        </div>
+
+        @* Studio Status Bar *@
+        <footer class="flex h-7 shrink-0 items-center justify-between border-t border-[#232838] bg-[#0e1118] px-4 font-mono text-[11px] text-slate-400">
+            <div class="flex items-center gap-4">
+                <span>CANVAS: @StudioState.Metadata.Width&times;@StudioState.Metadata.Height px</span>
+                <span>GRID: @(StudioState.ShowGrid ? "ON" : "OFF")</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span>ZOOM: @StudioState.ZoomPercent%</span>
+                <span class="text-emerald-400">READY</span>
+            </div>
+        </footer>
+    </MudMainContent>
+</MudLayout>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">&#10005;</span>
+</div>
+
+@code {
+    private bool _drawerOpen = true;
+
+    private static readonly char[] _quickGlyphs = ['@', '#', '%', '*', '+', ':', '.', '/', '\\', '|', '-', '~'];
+
+    private static readonly (StudioTool Tool, string Label, string Icon)[] _tools =
+    [
+        (StudioTool.Pencil, "Pencil", Icons.Material.Filled.Edit),
+        (StudioTool.Eraser, "Eraser", Icons.Material.Filled.AutoFixOff),
+        (StudioTool.AsciiBrush, "ASCII", Icons.Material.Filled.TextFields),
+        (StudioTool.FillBucket, "Fill", Icons.Material.Filled.FormatColorFill),
+        (StudioTool.Eyedropper, "Picker", Icons.Material.Filled.Colorize),
+        (StudioTool.Marquee, "Select", Icons.Material.Filled.SelectAll)
+    ];
+
+    protected override void OnInitialized()
+    {
+        StudioState.OnChange += HandleStateChanged;
+    }
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private void HandleSavePlaceholder()
+    {
+        Snackbar.Add($"Saved {StudioState.Metadata.ProjectName} (placeholder).", Severity.Success);
+    }
+
+    private void HandleExportPlaceholder()
+    {
+        Snackbar.Add("Export dialog (GIF / Sprite Sheet / ANSI-ASCII) coming in next step.", Severity.Info);
+    }
+
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        StudioState.OnChange -= HandleStateChanged;
+    }
+}
