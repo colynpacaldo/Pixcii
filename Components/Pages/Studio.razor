@@ -11,263 +11,249 @@
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 
-<PageTitle>Pixcii — Live Studio &amp; Converter</PageTitle>
+<PageTitle>Pixcii — Studio</PageTitle>
 
 <div class="flex h-full w-full min-w-0 flex-col overflow-hidden lg:flex-row">
     @* ===================================================================== *@
-    @* 1. LEFT INSPECTOR PANEL                                               *@
+    @* 1. LEFT INSPECTOR PANEL (16px padding, 20px group gaps)               *@
     @* ===================================================================== *@
     <MudPaper Elevation="0"
               Square="true"
-              Class="w-full shrink-0 overflow-y-auto border-b border-[#232838] bg-[#10131c] lg:h-full lg:w-[360px] lg:border-r lg:border-b-0">
-        <div class="flex flex-col gap-4 p-4">
+              Class="w-full shrink-0 overflow-y-auto border-b border-[#2e2e2e] bg-[#1b1b1b] lg:h-full lg:w-[320px] lg:border-r lg:border-b-0">
+        <div class="flex flex-col gap-5 p-4">
 
-        @* Mode Switcher *@
-        <div class="space-y-1.5">
-            <div class="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                Studio Mode
-            </div>
-            <MudToggleGroup T="ProjectMode"
-                            Value="_mode"
-                            ValueChanged="OnModeChanged"
-                            Color="Color.Primary"
-                            CheckMark="false"
-                            FixedContent="true"
-                            Outlined="true"
-                            SelectionMode="SelectionMode.SingleSelection"
-                            Class="w-full">
-                <MudToggleItem Value="ProjectMode.Ascii" Text="ASCII Mode" />
-                <MudToggleItem Value="ProjectMode.PixelArt" Text="Pixel Art Mode" />
-            </MudToggleGroup>
-        </div>
+            @* Group 1: Mode & Presets directly underneath *@
+            <div class="flex flex-col gap-3">
+                <div class="text-sm font-semibold text-[#eae6df]">Mode</div>
 
-        @* Image Upload (PNG / JPG / WebP, max 5MB) *@
-        <div class="space-y-2">
-            <div class="flex items-center justify-between">
-                <span class="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                    Source Media
-                </span>
-                <span class="font-mono text-[10px] text-slate-500">MAX 5 MB</span>
-            </div>
+                <MudToggleGroup T="ProjectMode"
+                                Value="_mode"
+                                ValueChanged="OnModeChanged"
+                                Color="Color.Primary"
+                                CheckMark="false"
+                                FixedContent="true"
+                                Outlined="true"
+                                SelectionMode="SelectionMode.SingleSelection"
+                                Class="w-full">
+                    <MudToggleItem Value="ProjectMode.Ascii" Text="ASCII" />
+                    <MudToggleItem Value="ProjectMode.PixelArt" Text="Pixel art" />
+                </MudToggleGroup>
 
-            <MudFileUpload T="IBrowserFile"
-                           Accept=".png,.jpg,.jpeg,.webp"
-                           MaximumFileCount="1"
-                           FilesChanged="OnFileUploadedAsync">
-                <CustomContent Context="fileUpload">
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               FullWidth="true"
-                               StartIcon="@Icons.Material.Filled.UploadFile"
-                               OnClick="@fileUpload.OpenFilePickerAsync">
-                        Upload PNG / JPG / WebP
-                    </MudButton>
-                </CustomContent>
-            </MudFileUpload>
-
-            <div class="flex items-center justify-between gap-2">
-                <span class="truncate font-mono text-[11px] text-slate-400" title="@_sourceFileName">
-                    @_sourceFileName
-                </span>
-                <MudButton Variant="Variant.Text"
-                           Color="Color.Secondary"
-                           Size="Size.Small"
-                           OnClick="LoadSampleImageAsync">
-                    Sample Art
-                </MudButton>
-            </div>
-        </div>
-
-        <MudDivider />
-
-        @* Live Sliders *@
-        <div class="space-y-3">
-            <div class="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                Conversion Tuning
-            </div>
-
-            @if (_mode == ProjectMode.Ascii)
-            {
-                <div>
-                    <div class="flex justify-between font-mono text-xs text-slate-300">
-                        <span>Resolution (Cols)</span>
-                        <span class="text-cyan-300">@_asciiWidth ch</span>
-                    </div>
-                    <MudSlider T="int"
-                               Value="_asciiWidth"
-                               ValueChanged="OnAsciiWidthChanged"
-                               Min="16"
-                               Max="160"
-                               Step="4"
-                               Color="Color.Primary" />
-                </div>
-            }
-            else
-            {
-                <div>
-                    <div class="flex justify-between font-mono text-xs text-slate-300">
-                        <span>Grid Resolution</span>
-                        <span class="text-cyan-300">@_pixelGridSize &times; @_pixelGridSize</span>
-                    </div>
-                    <MudSlider T="int"
-                               Value="_pixelGridSize"
-                               ValueChanged="OnPixelGridSizeChanged"
-                               Min="8"
-                               Max="128"
-                               Step="4"
-                               Color="Color.Primary" />
-                </div>
-            }
-
-            <div>
-                <div class="flex justify-between font-mono text-xs text-slate-300">
-                    <span>Brightness</span>
-                    <span class="text-amber-300">@_brightness.ToString("0.00")</span>
-                </div>
-                <MudSlider T="float"
-                           Value="_brightness"
-                           ValueChanged="OnBrightnessChanged"
-                           Min="0.30f"
-                           Max="2.00f"
-                           Step="0.05f"
-                           Color="Color.Secondary" />
-            </div>
-
-            <div>
-                <div class="flex justify-between font-mono text-xs text-slate-300">
-                    <span>Contrast</span>
-                    <span class="text-amber-300">@_contrast.ToString("0.00")</span>
-                </div>
-                <MudSlider T="float"
-                           Value="_contrast"
-                           ValueChanged="OnContrastChanged"
-                           Min="0.30f"
-                           Max="2.00f"
-                           Step="0.05f"
-                           Color="Color.Secondary" />
-            </div>
-
-            <MudSwitch T="bool"
-                       Value="_invertBrightness"
-                       ValueChanged="OnInvertChanged"
-                       Color="Color.Primary"
-                       Label="Invert Brightness"
-                       Size="Size.Small" />
-        </div>
-
-        <MudDivider />
-
-        @* Mode-Specific Presets *@
-        @if (_mode == ProjectMode.Ascii)
-        {
-            <div class="space-y-3">
-                <div class="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                    ASCII Presets
-                </div>
-
-                <MudSelect T="string"
-                           Label="Character Ramp"
-                           Variant="Variant.Outlined"
-                           Margin="Margin.Dense"
-                           Value="_rampPreset"
-                           ValueChanged="OnRampPresetChanged">
-                    <MudSelectItem Value="@("Standard")">Standard (@@%#*+=-:. )</MudSelectItem>
-                    <MudSelectItem Value="@("Dense")">Dense (70-char)</MudSelectItem>
-                    <MudSelectItem Value="@("Blocks")">Blocks (&#9608;&#9619;&#9618;&#9617; )</MudSelectItem>
-                    <MudSelectItem Value="@("Minimal")">Minimal (#+-. )</MudSelectItem>
-                    <MudSelectItem Value="@("Custom")">Custom Ramp</MudSelectItem>
-                </MudSelect>
-
-                @if (_rampPreset == "Custom")
+                @if (_mode == ProjectMode.Ascii)
                 {
-                    <MudTextField T="string"
-                                  Label="Custom Character Ramp"
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense"
-                                  Value="_customRamp"
-                                  ValueChanged="OnCustomRampChanged"
-                                  HelperText="Dense ink (left) to light/empty (right)" />
-                }
+                    <div class="flex flex-col gap-3 pt-1">
+                        <MudSelect T="string"
+                                   Label="Character ramp"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Value="_rampPreset"
+                                   ValueChanged="OnRampPresetChanged">
+                            <MudSelectItem Value="@("Standard")">Standard (@@%#*+=-:. )</MudSelectItem>
+                            <MudSelectItem Value="@("Dense")">Dense (70-char)</MudSelectItem>
+                            <MudSelectItem Value="@("Blocks")">Blocks (&#9608;&#9619;&#9618;&#9617; )</MudSelectItem>
+                            <MudSelectItem Value="@("Minimal")">Minimal (#+-. )</MudSelectItem>
+                            <MudSelectItem Value="@("Custom")">Custom ramp</MudSelectItem>
+                        </MudSelect>
 
-                <MudSelect T="AsciiColorMode"
-                           Label="Color Mode"
-                           Variant="Variant.Outlined"
-                           Margin="Margin.Dense"
-                           Value="_asciiColorMode"
-                           ValueChanged="OnAsciiColorModeChanged">
-                    <MudSelectItem Value="AsciiColorMode.FullColorHtml">Full Color HTML</MudSelectItem>
-                    <MudSelectItem Value="AsciiColorMode.MatrixGreen">Matrix Terminal Green</MudSelectItem>
-                    <MudSelectItem Value="AsciiColorMode.Monochrome">Monochrome</MudSelectItem>
-                </MudSelect>
-            </div>
-        }
-        else
-        {
-            <div class="space-y-3">
-                <div class="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                    Retro Palette &amp; Dither
-                </div>
-
-                <MudSelect T="Guid"
-                           Label="Palette (Database)"
-                           Variant="Variant.Outlined"
-                           Margin="Margin.Dense"
-                           Value="_selectedPaletteId"
-                           ValueChanged="OnPaletteChanged">
-                    @foreach (var palette in _palettes)
-                    {
-                        <MudSelectItem Value="@palette.Id">@palette.Name</MudSelectItem>
-                    }
-                </MudSelect>
-
-                @if (ActivePaletteColors.Length > 0)
-                {
-                    <div class="flex flex-wrap gap-1 rounded border border-[#232838] bg-[#141824] p-2">
-                        @foreach (var hex in ActivePaletteColors)
+                        @if (_rampPreset == "Custom")
                         {
-                            var isPaintActive = string.Equals(_paintHexColor, hex, StringComparison.OrdinalIgnoreCase) && !_paintEraser;
-                            <button type="button"
-                                    title="@($"Select {hex} for Quick Paint")"
-                                    @onclick="() => SelectPaintColor(hex)"
-                                    class="@(isPaintActive ? "ring-2 ring-cyan-400 scale-110" : "border-white/20") h-5 w-5 rounded border transition-transform cursor-pointer"
-                                    style="@($"background-color: {hex};")">
-                            </button>
+                            <MudTextField T="string"
+                                          Label="Custom characters"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          Value="_customRamp"
+                                          ValueChanged="OnCustomRampChanged"
+                                          HelperText="Darkest/dense on left to space on right" />
                         }
+
+                        <MudSelect T="AsciiColorMode"
+                                   Label="Color output"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Value="_asciiColorMode"
+                                   ValueChanged="OnAsciiColorModeChanged">
+                            <MudSelectItem Value="AsciiColorMode.FullColorHtml">Full color</MudSelectItem>
+                            <MudSelectItem Value="AsciiColorMode.MatrixGreen">Phosphor green</MudSelectItem>
+                            <MudSelectItem Value="AsciiColorMode.Monochrome">Monochrome</MudSelectItem>
+                        </MudSelect>
                     </div>
                 }
+                else
+                {
+                    <div class="flex flex-col gap-3 pt-1">
+                        <MudSelect T="Guid"
+                                   Label="Palette"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Value="_selectedPaletteId"
+                                   ValueChanged="OnPaletteChanged">
+                            @foreach (var palette in _palettes)
+                            {
+                                <MudSelectItem Value="@palette.Id">@palette.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        @if (ActivePaletteColors.Length > 0)
+                        {
+                            <div class="flex flex-wrap gap-1.5 rounded-[3px] border border-[#2e2e2e] bg-[#222222] p-2">
+                                @foreach (var hex in ActivePaletteColors)
+                                {
+                                    var isPaintActive = string.Equals(_paintHexColor, hex, StringComparison.OrdinalIgnoreCase) && !_paintEraser;
+                                    <button type="button"
+                                            title="@($"Select {hex}")"
+                                            @onclick="() => SelectPaintColor(hex)"
+                                            class="@(isPaintActive ? "border-[#e5a030] ring-1 ring-[#e5a030]" : "border-[#3d3d3d] hover:border-[#6a6760]") px-control h-5 w-5 rounded-[2px] border transition-colors duration-150 cursor-pointer"
+                                            style="@($"background-color: {hex};")">
+                                    </button>
+                                }
+                            </div>
+                        }
+
+                        <MudSwitch T="bool"
+                                   Value="_applyDithering"
+                                   ValueChanged="OnDitheringChanged"
+                                   Color="Color.Primary"
+                                   Label="Floyd-Steinberg dithering"
+                                   Size="Size.Small" />
+                    </div>
+                }
+            </div>
+
+            <hr class="m-0 border-0 border-t border-[#2e2e2e]" />
+
+            @* Group 2: Image Upload *@
+            <div class="flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-semibold text-[#eae6df]">Image</span>
+                    <span class="font-mono text-[11px] text-[#96928b]">Max 5 MB</span>
+                </div>
+
+                <MudFileUpload T="IBrowserFile"
+                               Accept=".png,.jpg,.jpeg,.webp"
+                               MaximumFileCount="1"
+                               FilesChanged="OnFileUploadedAsync">
+                    <CustomContent Context="fileUpload">
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Default"
+                                   FullWidth="true"
+                                   StartIcon="@Icons.Material.Outlined.UploadFile"
+                                   OnClick="@fileUpload.OpenFilePickerAsync">
+                            Upload PNG / JPG / WebP
+                        </MudButton>
+                    </CustomContent>
+                </MudFileUpload>
+
+                <div class="flex items-center justify-between gap-2">
+                    <span class="truncate text-xs text-[#96928b]" title="@_sourceFileName">
+                        @_sourceFileName
+                    </span>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Default"
+                               Size="Size.Small"
+                               OnClick="LoadSampleImageAsync">
+                        Load sample
+                    </MudButton>
+                </div>
+            </div>
+
+            <hr class="m-0 border-0 border-t border-[#2e2e2e]" />
+
+            @* Group 3: Settings *@
+            <div class="flex flex-col gap-3">
+                <div class="text-sm font-semibold text-[#eae6df]">Settings</div>
+
+                @if (_mode == ProjectMode.Ascii)
+                {
+                    <div>
+                        <div class="flex justify-between text-xs text-[#eae6df]">
+                            <span>Columns</span>
+                            <span class="font-mono text-[11px] text-[#96928b]">@_asciiWidth</span>
+                        </div>
+                        <MudSlider T="int"
+                                   Value="_asciiWidth"
+                                   ValueChanged="OnAsciiWidthChanged"
+                                   Min="16"
+                                   Max="160"
+                                   Step="4"
+                                   Color="Color.Primary" />
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <div class="flex justify-between text-xs text-[#eae6df]">
+                            <span>Grid size</span>
+                            <span class="font-mono text-[11px] text-[#96928b]">@_pixelGridSize&times;@_pixelGridSize</span>
+                        </div>
+                        <MudSlider T="int"
+                                   Value="_pixelGridSize"
+                                   ValueChanged="OnPixelGridSizeChanged"
+                                   Min="8"
+                                   Max="128"
+                                   Step="4"
+                                   Color="Color.Primary" />
+                    </div>
+                }
+
+                <div>
+                    <div class="flex justify-between text-xs text-[#eae6df]">
+                        <span>Brightness</span>
+                        <span class="font-mono text-[11px] text-[#96928b]">@_brightness.ToString("0.00")</span>
+                    </div>
+                    <MudSlider T="float"
+                               Value="_brightness"
+                               ValueChanged="OnBrightnessChanged"
+                               Min="0.30f"
+                               Max="2.00f"
+                               Step="0.05f"
+                               Color="Color.Primary" />
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs text-[#eae6df]">
+                        <span>Contrast</span>
+                        <span class="font-mono text-[11px] text-[#96928b]">@_contrast.ToString("0.00")</span>
+                    </div>
+                    <MudSlider T="float"
+                               Value="_contrast"
+                               ValueChanged="OnContrastChanged"
+                               Min="0.30f"
+                               Max="2.00f"
+                               Step="0.05f"
+                               Color="Color.Primary" />
+                </div>
 
                 <MudSwitch T="bool"
-                           Value="_applyDithering"
-                           ValueChanged="OnDitheringChanged"
+                           Value="_invertBrightness"
+                           ValueChanged="OnInvertChanged"
                            Color="Color.Primary"
-                           Label="Floyd-Steinberg Dithering"
+                           Label="Invert brightness"
                            Size="Size.Small" />
             </div>
-        }
         </div>
     </MudPaper>
 
     @* ===================================================================== *@
     @* 2. CENTER CANVAS STAGE                                                *@
     @* ===================================================================== *@
-    <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
-        @* Top Stage Toolbar *@
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#232838] bg-[#0e1118]/90 px-4 py-2">
+    <div class="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#141414]">
+        @* Stage Toolbar (32px consistent controls) *@
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#2e2e2e] bg-[#1b1b1b] px-4 py-2">
             <div class="flex items-center gap-3">
-                <span class="font-mono text-xs font-semibold tracking-wider text-cyan-300">
-                    @(_mode == ProjectMode.Ascii ? "ASCII STAGE" : "PIXEL ART STAGE")
+                <span class="text-sm font-semibold text-[#eae6df]">
+                    @(_mode == ProjectMode.Ascii ? "ASCII" : "Pixel art")
                 </span>
 
                 @if (_mode == ProjectMode.Ascii && _asciiResult is not null)
                 {
-                    <span class="rounded border border-[#232838] bg-[#141824] px-2 py-0.5 font-mono text-[11px] text-slate-300">
-                        @_asciiResult.Columns &times; @_asciiResult.Rows chars
+                    <span class="rounded-[3px] border border-[#2e2e2e] bg-[#222222] px-2 py-1 font-mono text-[11px] text-[#96928b]">
+                        @_asciiResult.Columns&times;@_asciiResult.Rows chars
                     </span>
                 }
                 else if (_mode == ProjectMode.PixelArt && _pixelResult is not null)
                 {
-                    <span class="rounded border border-[#232838] bg-[#141824] px-2 py-0.5 font-mono text-[11px] text-slate-300">
-                        @_pixelResult.Width &times; @_pixelResult.Height px
+                    <span class="rounded-[3px] border border-[#2e2e2e] bg-[#222222] px-2 py-1 font-mono text-[11px] text-[#96928b]">
+                        @_pixelResult.Width&times;@_pixelResult.Height px
                     </span>
                 }
 
@@ -278,29 +264,28 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
-                @* Quick Paint Toggle *@
                 <MudSwitch T="bool"
                            @bind-Value="_quickPaintEnabled"
-                           Color="Color.Secondary"
-                           Label="Quick Paint"
+                           Color="Color.Primary"
+                           Label="Quick paint"
                            Size="Size.Small" />
 
                 @if (_mode == ProjectMode.Ascii)
                 {
-                    <div class="flex items-center gap-1 rounded border border-[#232838] bg-[#141824] px-1.5 py-0.5 font-mono text-xs">
-                        <span class="text-slate-400">Font</span>
-                        <button type="button" @onclick="() => AdjustAsciiFont(-1)" class="px-1 text-slate-300 hover:text-cyan-300 cursor-pointer">-</button>
-                        <span class="w-9 text-center text-cyan-300">@(_asciiFontSizePx)px</span>
-                        <button type="button" @onclick="() => AdjustAsciiFont(1)" class="px-1 text-slate-300 hover:text-cyan-300 cursor-pointer">+</button>
+                    <div class="flex h-8 items-center gap-1 rounded-[3px] border border-[#3d3d3d] bg-[#222222] px-2 text-xs">
+                        <span class="text-[#96928b]">Font</span>
+                        <button type="button" @onclick="() => AdjustAsciiFont(-1)" class="px-control px-1.5 text-[#eae6df] hover:text-[#e5a030] transition-colors duration-150 cursor-pointer">-</button>
+                        <span class="w-9 text-center font-mono text-[11px] text-[#eae6df]">@(_asciiFontSizePx)px</span>
+                        <button type="button" @onclick="() => AdjustAsciiFont(1)" class="px-control px-1.5 text-[#eae6df] hover:text-[#e5a030] transition-colors duration-150 cursor-pointer">+</button>
                     </div>
 
                     <MudButton Variant="Variant.Outlined"
                                Color="Color.Default"
                                Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.ContentCopy"
+                               StartIcon="@Icons.Material.Outlined.ContentCopy"
                                Disabled="@(_asciiResult is null)"
                                OnClick="CopyAsciiPlainTextAsync">
-                        Copy Text
+                        Copy text
                     </MudButton>
                 }
                 else
@@ -313,11 +298,10 @@
                                Size="Size.Small" />
                 }
 
-                @* Zoom Controls *@
-                <div class="flex items-center gap-1 rounded border border-[#232838] bg-[#141824] px-1.5 py-0.5 font-mono text-xs">
-                    <button type="button" @onclick="() => AdjustZoom(-15)" class="px-1.5 text-slate-300 hover:text-cyan-300 cursor-pointer">-</button>
-                    <button type="button" @onclick="ResetZoom" class="w-11 text-center text-slate-200 hover:text-cyan-300 cursor-pointer">@(StudioState.ZoomPercent)%</button>
-                    <button type="button" @onclick="() => AdjustZoom(15)" class="px-1.5 text-slate-300 hover:text-cyan-300 cursor-pointer">+</button>
+                <div class="flex h-8 items-center gap-1 rounded-[3px] border border-[#3d3d3d] bg-[#222222] px-2 text-xs">
+                    <button type="button" @onclick="() => AdjustZoom(-15)" class="px-control px-1.5 text-[#eae6df] hover:text-[#e5a030] transition-colors duration-150 cursor-pointer">-</button>
+                    <button type="button" @onclick="ResetZoom" class="px-control w-11 text-center font-mono text-[11px] text-[#eae6df] hover:text-[#e5a030] transition-colors duration-150 cursor-pointer">@(StudioState.ZoomPercent)%</button>
+                    <button type="button" @onclick="() => AdjustZoom(15)" class="px-control px-1.5 text-[#eae6df] hover:text-[#e5a030] transition-colors duration-150 cursor-pointer">+</button>
                 </div>
             </div>
         </div>
@@ -325,65 +309,65 @@
         @* Quick Paint Sub-Toolbar *@
         @if (_quickPaintEnabled)
         {
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-amber-400/20 bg-amber-400/5 px-4 py-1.5">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#2e2e2e] bg-[#1b1b1b] px-4 py-2">
                 @if (_mode == ProjectMode.Ascii)
                 {
-                    <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
-                        <span class="text-amber-300">QUICK CHAR PAINT:</span>
-                        <label class="text-slate-400">Glyph:</label>
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <span class="font-medium text-[#e5a030]">Quick paint</span>
+                        <label class="text-[#96928b]">Glyph</label>
                         <input type="text"
                                maxlength="1"
                                value="@_paintGlyph"
                                @oninput="OnPaintGlyphInput"
-                               class="h-6 w-8 rounded border border-[#232838] bg-[#141824] text-center font-mono text-xs text-cyan-300 focus:border-cyan-400 focus:outline-none" />
+                               class="px-control h-8 w-8 rounded-[3px] border border-[#3d3d3d] bg-[#222222] text-center font-mono text-xs text-[#eae6df] focus:outline-none" />
                         <div class="flex items-center gap-1">
                             @foreach (var g in _quickAsciiGlyphs)
                             {
                                 var selected = _paintGlyph == g;
                                 <button type="button"
                                         @onclick="() => _paintGlyph = g"
-                                        class="@(selected ? "border-cyan-400 bg-cyan-400/15 text-cyan-300" : "border-[#232838] bg-[#141824] text-slate-300") h-6 w-6 rounded border font-mono text-xs cursor-pointer">
+                                        class="@(selected ? "border-[#e5a030] bg-[#e5a030]/15 text-[#e5a030]" : "border-[#3d3d3d] bg-[#222222] text-[#eae6df] hover:bg-[#2a2a2a]") px-control h-8 w-7 rounded-[3px] border font-mono text-xs transition-colors duration-150 cursor-pointer">
                                     @g
                                 </button>
                             }
                         </div>
-                        <label class="ml-2 text-slate-400">Color:</label>
+                        <label class="ml-2 text-[#96928b]">Color</label>
                         <input type="color"
                                value="@_paintHexColor"
                                @oninput="OnPaintColorInput"
-                               class="h-6 w-8 cursor-pointer rounded border border-[#232838] bg-transparent p-0" />
+                               class="px-control h-8 w-8 cursor-pointer rounded-[3px] border border-[#3d3d3d] bg-[#222222] p-0.5" />
                     </div>
                 }
                 else
                 {
-                    <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
-                        <span class="text-amber-300">QUICK PIXEL PAINT:</span>
-                        <div class="h-5 w-5 rounded border border-white/30"
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <span class="font-medium text-[#e5a030]">Quick paint</span>
+                        <div class="h-6 w-6 rounded-[2px] border border-[#3d3d3d]"
                              style="@($"background-color: {(_paintEraser ? "transparent" : _paintHexColor)};")"></div>
-                        <span class="text-slate-300">@(_paintEraser ? "ERASER" : _paintHexColor)</span>
+                        <span class="font-mono text-[11px] text-[#96928b]">@(_paintEraser ? "Eraser" : _paintHexColor)</span>
                         <button type="button"
                                 @onclick="() => _paintEraser = !_paintEraser"
-                                class="@(_paintEraser ? "border-rose-400 bg-rose-400/15 text-rose-300" : "border-[#232838] bg-[#141824] text-slate-300") rounded border px-2 py-0.5 text-[11px] cursor-pointer">
+                                class="@(_paintEraser ? "border-[#e5a030] bg-[#e5a030]/15 text-[#e5a030]" : "border-[#3d3d3d] bg-[#222222] text-[#eae6df] hover:bg-[#2a2a2a]") px-btn border px-2.5 text-xs cursor-pointer">
                             Eraser
                         </button>
                         <input type="color"
                                value="@_paintHexColor"
                                @oninput="OnPaintColorInput"
-                               class="h-6 w-8 cursor-pointer rounded border border-[#232838] bg-transparent p-0" />
+                               class="px-control h-8 w-8 cursor-pointer rounded-[3px] border border-[#3d3d3d] bg-[#222222] p-0.5" />
                     </div>
                 }
 
-                <span class="font-mono text-[11px] text-slate-400">Click any cell on the canvas to paint</span>
+                <span class="text-xs text-[#96928b]">Click any cell to edit</span>
             </div>
         }
 
-        @* Checkerboard Stage *@
+        @* Checkerboard Canvas Stage (1px crisp frame, no glows or drop shadows) *@
         <div class="pixcii-checkerboard flex flex-1 items-center justify-center overflow-auto p-6">
             @if (_mode == ProjectMode.Ascii && _asciiResult is not null)
             {
                 var onionAscii = GetOnionSkinAscii();
 
-                <div class="relative rounded-lg border border-[#2a3145] bg-[#0b0d12]/95 p-4 shadow-[0_0_50px_rgba(0,0,0,0.65)]"
+                <div class="relative rounded-[3px] border border-[#3d3d3d] bg-[#141414] p-4"
                      style="@($"transform: scale({StudioState.ZoomPercent / 100.0:F2}); transform-origin: center center;")">
                     @if (onionAscii is not null)
                     {
@@ -402,7 +386,7 @@
                                 var col = c;
                                 var cell = _asciiResult.Grid[row, col];
                                 <span @onclick="() => PaintAsciiCell(row, col)"
-                                      class="cursor-crosshair hover:outline hover:outline-1 hover:outline-cyan-400/70"
+                                      class="cursor-crosshair hover:outline hover:outline-1 hover:outline-[#e5a030]"
                                       style="@($"color: {cell.HexColor};")">@cell.Glyph</span>
                             }
                             @("\n")
@@ -422,7 +406,7 @@
                 var scaledHeightPx = (int)Math.Round(scaledWidthPx * ((double)_pixelResult.Height / _pixelResult.Width));
                 var onionPixelBase64 = GetOnionSkinPixelBase64();
 
-                <div class="pixcii-checkerboard relative overflow-hidden rounded-lg border border-[#2a3145] shadow-[0_0_50px_rgba(0,0,0,0.65)]"
+                <div class="pixcii-checkerboard relative overflow-hidden rounded-[3px] border border-[#3d3d3d]"
                      style="@($"width: {scaledWidthPx}px; height: {scaledHeightPx}px;")">
                     @if (!string.IsNullOrEmpty(onionPixelBase64))
                     {
@@ -433,14 +417,14 @@
                     }
 
                     <img src="@_pixelResult.DataUrl"
-                         alt="Converted Pixel Art"
+                         alt="Converted pixel art"
                          class="pixelated relative z-10 block h-full w-full select-none"
                          style="image-rendering: pixelated;" />
 
                     @if (StudioState.ShowGrid)
                     {
-                        <div class="pointer-events-none absolute inset-0 z-20 opacity-30"
-                             style="@($"background-image: linear-gradient(to right, #94a3b8 1px, transparent 1px), linear-gradient(to bottom, #94a3b8 1px, transparent 1px); background-size: calc(100% / {_pixelResult.Width}) calc(100% / {_pixelResult.Height});")">
+                        <div class="pointer-events-none absolute inset-0 z-20 opacity-25"
+                             style="@($"background-image: linear-gradient(to right, #96928b 1px, transparent 1px), linear-gradient(to bottom, #96928b 1px, transparent 1px); background-size: calc(100% / {_pixelResult.Width}) calc(100% / {_pixelResult.Height});")">
                         </div>
                     }
 
@@ -457,7 +441,7 @@
                                     <button type="button"
                                             title="@($"({col}, {row})")"
                                             @onclick="() => PaintPixelCell(row, col)"
-                                            class="h-full w-full border-0 bg-transparent p-0 cursor-crosshair hover:bg-white/20">
+                                            class="h-full w-full border-0 bg-transparent p-0 cursor-crosshair hover:bg-white/15">
                                     </button>
                                 }
                             }
@@ -467,13 +451,13 @@
             }
             else
             {
-                <div class="rounded-lg border border-[#232838] bg-[#0e1118]/90 px-6 py-5 text-center font-mono text-xs text-slate-400">
-                    Upload a PNG, JPG, or WebP image from the left inspector to begin.
+                <div class="rounded-[3px] border border-dashed border-[#3d3d3d] bg-[#1b1b1b] p-8 text-center text-xs text-[#96928b]">
+                    Drop an image here or click Upload
                 </div>
             }
         </div>
 
-        @* Bottom Animation Timeline & Loop Player *@
+        @* Bottom Timeline *@
         <AnimationTimeline Mode="_mode"
                            HasCanvasContent="HasActiveCanvas"
                            OnCaptureCurrentCanvas="CaptureCurrentCanvasAsFrame"
@@ -484,7 +468,7 @@
 @code {
     [Parameter] public Guid? ProjectId { get; set; }
 
-    private const long MaxUploadSizeBytes = 5 * 1024 * 1024; // 5 MB
+    private const long MaxUploadSizeBytes = 5 * 1024 * 1024;
 
     private static readonly char[] _quickAsciiGlyphs = ['@', '#', '%', '*', '+', '=', '-', ':', '.', ' '];
 
@@ -496,32 +480,27 @@
     private byte[]? _sourceBytes;
     private string _sourceFileName = "sample-synthwave.png";
 
-    // Conversion tuning parameters
     private int _asciiWidth = 64;
     private int _pixelGridSize = 32;
     private float _brightness = 1.0f;
     private float _contrast = 1.0f;
     private bool _invertBrightness;
 
-    // ASCII options
     private string _rampPreset = "Standard";
     private string _customRamp = AsciiRamps.Standard;
     private AsciiColorMode _asciiColorMode = AsciiColorMode.FullColorHtml;
 
-    // Pixel Art options (loaded from EF Core database)
     private IReadOnlyList<CustomPalette> _palettes = [];
     private Guid _selectedPaletteId;
     private bool _applyDithering;
 
-    // Stage viewport & Quick Paint state
     private bool _isConverting;
     private bool _quickPaintEnabled;
     private int _asciiFontSizePx = 11;
     private char _paintGlyph = '@';
-    private string _paintHexColor = "#22D3EE";
+    private string _paintHexColor = "#E5A030";
     private bool _paintEraser;
 
-    // Conversion outputs
     private AsciiResult? _asciiResult;
     private PixelArtResult? _pixelResult;
 
@@ -700,7 +679,6 @@
         }
         catch (OperationCanceledException)
         {
-            // Superseded by newer slider input.
         }
     }
 
@@ -762,7 +740,6 @@
         }
         catch (OperationCanceledException)
         {
-            // Ignore cancelled conversion runs.
         }
         catch (Exception ex)
         {
@@ -828,7 +805,7 @@
         _isPublic = project.IsPublic;
         _mode = project.Mode;
         _customRamp = project.CharacterRamp;
-        _sourceFileName = $"{project.Title} (Loaded)";
+        _sourceFileName = project.Title;
 
         var matchedPalette = _palettes.FirstOrDefault(p =>
             string.Equals(p.Name, project.PaletteName, StringComparison.OrdinalIgnoreCase));
@@ -866,8 +843,8 @@
 
         Snackbar.Add(
             project.RemixedFromId.HasValue
-                ? $"Loaded remix '{project.Title}' into Studio!"
-                : $"Loaded '{project.Title}'.",
+                ? $"Loaded remix \"{project.Title}\"."
+                : $"Loaded \"{project.Title}\".",
             Severity.Info);
     }
 
@@ -875,7 +852,7 @@
     {
         if (!HasActiveCanvas && StudioState.Frames.Count == 0)
         {
-            Snackbar.Add("Create or convert an image before saving.", Severity.Warning);
+            Snackbar.Add("Drop or upload an image before saving.", Severity.Warning);
             return;
         }
 
@@ -893,7 +870,7 @@
             FullWidth = true
         };
 
-        var dialog = await DialogService.ShowAsync<SaveProjectDialog>("Save Pixcii Project", parameters, options);
+        var dialog = await DialogService.ShowAsync<SaveProjectDialog>("Save project", parameters, options);
         var result = await dialog.Result;
         if (result is null || result.Canceled || result.Data is not SaveProjectDialog.SaveProjectResult saveReq)
         {
@@ -953,8 +930,8 @@
 
             Snackbar.Add(
                 saved.IsPublic
-                    ? $"Saved '{saved.Title}' and published to Class Gallery!"
-                    : $"Saved '{saved.Title}' to database.",
+                    ? $"Saved \"{saved.Title}\" to the Gallery."
+                    : $"Saved \"{saved.Title}\".",
                 Severity.Success);
 
             if (ProjectId != saved.Id)
@@ -1033,13 +1010,13 @@
         {
             var frame = FrameSerialization.ToArtFrame(_asciiResult, StudioState.Frames.Count, durationMs);
             StudioState.AddFrame(frame);
-            Snackbar.Add($"Added ASCII frame #{StudioState.Frames.Count}.", Severity.Success);
+            Snackbar.Add($"Added frame #{StudioState.Frames.Count}.", Severity.Success);
         }
         else if (_mode == ProjectMode.PixelArt && _pixelResult is not null)
         {
             var frame = FrameSerialization.ToArtFrame(_pixelResult, StudioState.Frames.Count, durationMs);
             StudioState.AddFrame(frame);
-            Snackbar.Add($"Added Pixel frame #{StudioState.Frames.Count}.", Severity.Success);
+            Snackbar.Add($"Added frame #{StudioState.Frames.Count}.", Severity.Success);
         }
     }
 
@@ -1049,13 +1026,13 @@
         {
             var generated = FxService.GenerateAsciiLoop(_asciiResult, preset, _asciiColorMode, StudioState.Fps);
             StudioState.ReplaceFrames(generated);
-            Snackbar.Add($"Generated {generated.Count}-frame {preset} ASCII loop!", Severity.Success);
+            Snackbar.Add($"Generated {generated.Count} frames.", Severity.Success);
         }
         else if (_mode == ProjectMode.PixelArt && _pixelResult is not null)
         {
             var generated = FxService.GeneratePixelArtLoop(_pixelResult, preset, ActivePaletteColors, StudioState.Fps);
             StudioState.ReplaceFrames(generated);
-            Snackbar.Add($"Generated {generated.Count}-frame {preset} Pixel loop!", Severity.Success);
+            Snackbar.Add($"Generated {generated.Count} frames.", Severity.Success);
         }
 
         return Task.CompletedTask;
@@ -1147,7 +1124,7 @@
         try
         {
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", _asciiResult.PlainText);
-            Snackbar.Add("Copied plain-text ASCII to clipboard.", Severity.Success);
+            Snackbar.Add("Copied text to clipboard.", Severity.Success);
         }
         catch
         {

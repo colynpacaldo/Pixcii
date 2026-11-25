@@ -5,31 +5,145 @@
 
 @source "../Components";
 
-/* Retro studio theme tokens & canvas helpers */
+:root {
+  --px-bg: #141414;
+  --px-panel: #1B1B1B;
+  --px-surface: #222222;
+  --px-surface-hover: #2A2A2A;
+  --px-border: #2E2E2E;
+  --px-border-strong: #3D3D3D;
+  --px-text: #EAE6DF;
+  --px-text-muted: #96928B;
+  --px-text-disabled: #5A5752;
+  --px-accent: #E5A030;
+  --px-accent-hover: #F0B24A;
+  --px-accent-contrast: #14110B;
+}
+
 @theme {
-  --font-mono: "JetBrains Mono", "Cascadia Code", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 @layer utilities {
+  /* Calmer low-contrast neutral checkerboard for pixel transparency */
   .pixcii-checkerboard {
-    background-color: #11131a;
+    background-color: #161616;
     background-image:
-      linear-gradient(45deg, #191d28 25%, transparent 25%),
-      linear-gradient(-45deg, #191d28 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #191d28 75%),
-      linear-gradient(-45deg, transparent 75%, #191d28 75%);
-    background-size: 16px 16px;
-    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      linear-gradient(45deg, #1C1C1C 25%, transparent 25%),
+      linear-gradient(-45deg, #1C1C1C 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #1C1C1C 75%),
+      linear-gradient(-45deg, transparent 75%, #1C1C1C 75%);
+    background-size: 12px 12px;
+    background-position: 0 0, 0 6px, 6px -6px, -6px 0;
   }
 
-  .pixcii-workspace-dots {
-    background-color: #0b0d12;
-    background-image: radial-gradient(rgba(148, 163, 184, 0.14) 1px, transparent 1px);
-    background-size: 20px 20px;
+  .pixcii-workspace {
+    background-color: var(--px-bg);
   }
 
   .pixelated {
     image-rendering: pixelated;
     image-rendering: crisp-edges;
   }
+
+  .px-btn {
+    height: 32px;
+    border-radius: 3px;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
+
+  .px-btn:focus-visible,
+  .px-control:focus-visible {
+    outline: 2px solid var(--px-accent);
+    outline-offset: 1px;
+  }
+
+  .px-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+/* Flat desktop-tool overrides for MudBlazor controls (no glows, 32px height, crisp 1px borders) */
+.mud-paper,
+.mud-card,
+.mud-appbar,
+.mud-drawer {
+  box-shadow: none !important;
+}
+
+.mud-layout,
+.mud-main-content {
+  box-sizing: border-box;
+}
+
+.mud-dialog {
+  border: 1px solid var(--px-border-strong);
+  border-radius: 4px !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55) !important;
+}
+
+.mud-button-root.mud-button {
+  min-height: 32px;
+  height: 32px;
+  border-radius: 3px;
+  letter-spacing: 0;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.mud-button-root.mud-button-outlined {
+  border-color: var(--px-border-strong);
+  color: var(--px-text);
+  background-color: var(--px-surface);
+}
+
+.mud-button-root.mud-button-outlined:hover:not(:disabled) {
+  background-color: var(--px-surface-hover);
+  border-color: #4D4D4D;
+}
+
+.mud-button-root.mud-button-filled.mud-button-filled-primary {
+  background-color: var(--px-accent);
+  color: var(--px-accent-contrast);
+}
+
+.mud-button-root.mud-button-filled.mud-button-filled-primary:hover:not(:disabled) {
+  background-color: var(--px-accent-hover);
+}
+
+.mud-button-root:focus-visible {
+  outline: 2px solid var(--px-accent);
+  outline-offset: 1px;
+}
+
+.mud-input-outlined-border {
+  border-radius: 3px !important;
+}
+
+.mud-input-control .mud-input-slot {
+  min-height: 32px;
+  font-size: 12px;
+}
+
+.mud-toggle-group {
+  height: 32px;
+  border-radius: 3px !important;
+  border-color: var(--px-border-strong) !important;
+}
+
+.mud-toggle-item {
+  height: 30px !important;
+  min-height: 30px !important;
+  font-size: 12px !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.mud-chip {
+  height: 32px !important;
+  border-radius: 3px !important;
+  font-size: 12px !important;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }

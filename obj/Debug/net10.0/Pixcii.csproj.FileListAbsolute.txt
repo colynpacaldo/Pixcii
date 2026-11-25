@@ -223,7 +223,6 @@ C:\Users\Lenovo\.gemini\antigravity\scratch\Pixcii\obj\Debug\net10.0\Pixcii.sour
 C:\Users\Lenovo\.gemini\antigravity\scratch\Pixcii\bin\Debug\net10.0\SixLabors.ImageSharp.dll
 C:\Users\Lenovo\.gemini\antigravity\scratch\Pixcii\obj\Debug\net10.0\compressed\moohfetzoa-{0}-y4iyyb1z0y-y4iyyb1z0y.gz
 C:\Users\Lenovo\.gemini\antigravity\scratch\Pixcii\obj\Debug\net10.0\compressed\1kxqga5c3e-{0}-knq4elgi8s-knq4elgi8s.gz
-C:\Users\Lenovo\.gemini\antigravity\scratch\Pixcii\obj\Debug\net10.0\compressed\em81ue7n2s-{0}-xirf7w4eoq-xirf7w4eoq.gz
 C:\Users\Lenovo\.gemini\antigravity\brain\e5be774c-7f2a-4e68-be34-fb35372a4056\scratch\pixcii_out\BuildHost-net472\Microsoft.Build.Locator.dll
 C:\Users\Lenovo\.gemini\antigravity\brain\e5be774c-7f2a-4e68-be34-fb35372a4056\scratch\pixcii_out\BuildHost-net472\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.exe
 C:\Users\Lenovo\.gemini\antigravity\brain\e5be774c-7f2a-4e68-be34-fb35372a4056\scratch\pixcii_out\BuildHost-net472\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.exe.config
@@ -282,3 +281,4 @@ C:\Users\Lenovo\.gemini\antigravity\brain\e5be774c-7f2a-4e68-be34-fb35372a4056\s
 C:\Users\Lenovo\.gemini\antigravity\brain\e5be774c-7f2a-4e68-be34-fb35372a4056\scratch\pixcii_out\Pixcii.runtimeconfig.json
 C:\Users\Lenovo\.gemini\antigravity\brain\e5be774c-7f2a-4e68-be34-fb35372a4056\scratch\pixcii_out\Pixcii.dll
 C:\Users\Lenovo\.gemini\antigravity\brain\e5be774c-7f2a-4e68-be34-fb35372a4056\scratch\pixcii_out\Pixcii.pdb
+C:\Users\Lenovo\.gemini\antigravity\scratch\Pixcii\obj\Debug\net10.0\compressed\em81ue7n2s-{0}-m0swz85hc3-m0swz85hc3.gz

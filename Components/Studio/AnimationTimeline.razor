@@ -2,31 +2,30 @@
 @inject StudioStateService StudioState
 @inject MediaConversionService ConversionService
 
-<div class="flex shrink-0 flex-col border-t border-[#232838] bg-[#0e1118] select-none">
+<div class="flex shrink-0 flex-col border-t border-[#2e2e2e] bg-[#1b1b1b] select-none">
     @* ===================================================================== *@
-    @* TIMELINE TRANSPORT & FX TOOLBAR                                       *@
+    @* TIMELINE CONTROLS                                                     *@
     @* ===================================================================== *@
-    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[#232838] px-3 py-1.5">
-        @* Frame Management Actions *@
+    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[#2e2e2e] px-4 py-2">
         <div class="flex items-center gap-1">
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
                        Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.AddBox"
+                       StartIcon="@Icons.Material.Outlined.Add"
                        Disabled="@(!HasCanvasContent)"
                        OnClick="HandleAddFrameAsync">
-                Add Frame
+                Add frame
             </MudButton>
 
-            <MudTooltip Text="Duplicate Active Frame">
-                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+            <MudTooltip Text="Duplicate frame">
+                <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
                                Size="Size.Small"
                                Color="Color.Default"
                                Disabled="@(StudioState.ActiveFrameIndex < 0)"
                                OnClick="() => StudioState.DuplicateFrame(StudioState.ActiveFrameIndex)" />
             </MudTooltip>
 
-            <MudTooltip Text="Move Frame Left">
+            <MudTooltip Text="Move left">
                 <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft"
                                Size="Size.Small"
                                Color="Color.Default"
@@ -34,7 +33,7 @@
                                OnClick="() => StudioState.MoveFrameLeft(StudioState.ActiveFrameIndex)" />
             </MudTooltip>
 
-            <MudTooltip Text="Move Frame Right">
+            <MudTooltip Text="Move right">
                 <MudIconButton Icon="@Icons.Material.Filled.ChevronRight"
                                Size="Size.Small"
                                Color="Color.Default"
@@ -42,8 +41,8 @@
                                OnClick="() => StudioState.MoveFrameRight(StudioState.ActiveFrameIndex)" />
             </MudTooltip>
 
-            <MudTooltip Text="Delete Active Frame">
-                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+            <MudTooltip Text="Delete frame">
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete"
                                Size="Size.Small"
                                Color="Color.Error"
                                Disabled="@(StudioState.ActiveFrameIndex < 0)"
@@ -51,10 +50,9 @@
             </MudTooltip>
         </div>
 
-        @* Playback Loop Controls (1–24 FPS) *@
         <div class="flex items-center gap-2">
-            <div class="flex items-center gap-0.5 rounded border border-[#232838] bg-[#141824] px-1">
-                <MudTooltip Text="Step Backward">
+            <div class="flex h-8 items-center gap-0.5 rounded-[3px] border border-[#3d3d3d] bg-[#222222] px-1">
+                <MudTooltip Text="Previous frame">
                     <MudIconButton Icon="@Icons.Material.Filled.SkipPrevious"
                                    Size="Size.Small"
                                    Color="Color.Default"
@@ -62,15 +60,15 @@
                                    OnClick="HandleStepBackward" />
                 </MudTooltip>
 
-                <MudTooltip Text="@(StudioState.IsPlaying ? "Pause Loop" : "Play Loop")">
+                <MudTooltip Text="@(StudioState.IsPlaying ? "Pause" : "Play")">
                     <MudIconButton Icon="@(StudioState.IsPlaying ? Icons.Material.Filled.Pause : Icons.Material.Filled.PlayArrow)"
                                    Size="Size.Small"
-                                   Color="@(StudioState.IsPlaying ? Color.Secondary : Color.Primary)"
+                                   Color="@(StudioState.IsPlaying ? Color.Primary : Color.Default)"
                                    Disabled="@(StudioState.Frames.Count < 2)"
                                    OnClick="TogglePlayback" />
                 </MudTooltip>
 
-                <MudTooltip Text="Step Forward">
+                <MudTooltip Text="Next frame">
                     <MudIconButton Icon="@Icons.Material.Filled.SkipNext"
                                    Size="Size.Small"
                                    Color="Color.Default"
@@ -79,8 +77,8 @@
                 </MudTooltip>
             </div>
 
-            <div class="flex items-center gap-2 rounded border border-[#232838] bg-[#141824] px-2.5 py-0.5">
-                <span class="font-mono text-[11px] text-amber-300">@StudioState.Fps FPS</span>
+            <div class="flex h-8 items-center gap-2 rounded-[3px] border border-[#3d3d3d] bg-[#222222] px-2.5">
+                <span class="font-mono text-[11px] text-[#eae6df]">@StudioState.Fps FPS</span>
                 <div class="w-24">
                     <MudSlider T="int"
                                Value="StudioState.Fps"
@@ -89,57 +87,56 @@
                                Max="24"
                                Step="1"
                                Size="Size.Small"
-                               Color="Color.Secondary" />
+                               Color="Color.Primary" />
                 </div>
             </div>
         </div>
 
-        @* Onion Skinning & Instant Animation FX Menu *@
-        <div class="flex items-center gap-2">
-            <MudTooltip Text="Overlay previous frame at 30% opacity while editing">
+        <div class="flex items-center gap-3">
+            <MudTooltip Text="Show previous frame at 30% opacity">
                 <MudSwitch T="bool"
                            Value="StudioState.OnionSkinningEnabled"
                            ValueChanged="@(_ => StudioState.ToggleOnionSkinning())"
-                           Color="Color.Tertiary"
-                           Label="Onion Skin"
+                           Color="Color.Primary"
+                           Label="Onion skin"
                            Size="Size.Small" />
             </MudTooltip>
 
-            <MudMenu Label="Instant FX"
+            <MudMenu Label="Effects"
                      Variant="Variant.Outlined"
-                     Color="Color.Secondary"
+                     Color="Color.Default"
                      Size="Size.Small"
-                     StartIcon="@Icons.Material.Filled.AutoAwesome"
+                     StartIcon="@Icons.Material.Outlined.AutoFixHigh"
                      EndIcon="@Icons.Material.Filled.KeyboardArrowDown"
                      Disabled="@(!HasCanvasContent)">
-                <MudMenuItem Icon="@Icons.Material.Filled.BrokenImage"
+                <MudMenuItem Icon="@Icons.Material.Outlined.BrokenImage"
                              OnClick="() => TriggerFxAsync(AnimationFxPreset.GlitchVhs)">
-                    Glitch / VHS (8 frames)
+                    Glitch (8 frames)
                 </MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.Waves"
+                <MudMenuItem Icon="@Icons.Material.Outlined.Waves"
                              OnClick="() => TriggerFxAsync(AnimationFxPreset.WaveWobble)">
-                    Wave / Wobble (8 frames)
+                    Wave (8 frames)
                 </MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.Flare"
+                <MudMenuItem Icon="@Icons.Material.Outlined.Brightness6"
                              OnClick="() => TriggerFxAsync(AnimationFxPreset.PulseBreathing)">
-                    Pulse / Breathing (8 frames)
+                    Pulse (8 frames)
                 </MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.VerticalAlignCenter"
+                <MudMenuItem Icon="@Icons.Material.Outlined.VerticalAlignCenter"
                              OnClick="() => TriggerFxAsync(AnimationFxPreset.Bounce)">
-                    Bounce Idle Loop (8 frames)
+                    Bounce (8 frames)
                 </MudMenuItem>
             </MudMenu>
         </div>
     </div>
 
     @* ===================================================================== *@
-    @* HORIZONTAL SCROLLABLE FILMSTRIP                                       *@
+    @* HORIZONTAL FILMSTRIP                                                  *@
     @* ===================================================================== *@
-    <div class="flex h-24 items-center gap-2 overflow-x-auto px-3 py-2">
+    <div class="flex h-24 items-center gap-2 overflow-x-auto px-4 py-2">
         @if (StudioState.Frames.Count == 0)
         {
-            <div class="flex h-full w-full items-center justify-center rounded border border-dashed border-[#232838] font-mono text-xs text-slate-500">
-                No animation frames yet — click <span class="mx-1 text-cyan-300">Add Frame</span> or pick an <span class="mx-1 text-amber-300">Instant FX</span> preset.
+            <div class="flex h-full w-full items-center justify-center rounded-[3px] border border-dashed border-[#3d3d3d] text-xs text-[#96928b]">
+                No frames yet. Click Add frame or choose Effects.
             </div>
         }
         else
@@ -152,13 +149,14 @@
 
                 <div @key="frame.Id"
                      @onclick="() => SelectFrame(idx)"
-                     class="@(isActive ? "border-cyan-400 bg-cyan-400/10 ring-1 ring-cyan-400/50" : "border-[#232838] bg-[#141824] hover:border-slate-500") flex h-full w-24 shrink-0 cursor-pointer flex-col justify-between rounded border p-1 transition-colors">
-                    <div class="flex items-center justify-between font-mono text-[10px]">
-                        <span class="@(isActive ? "text-cyan-300 font-bold" : "text-slate-400")">#@((idx + 1).ToString("D2"))</span>
-                        <span class="text-slate-500">@(frame.DurationMs)ms</span>
+                     tabindex="0"
+                     class="@(isActive ? "border-[#e5a030] bg-[#222222]" : "border-[#2e2e2e] bg-[#222222] hover:border-[#4d4d4d]") px-control flex h-full w-24 shrink-0 cursor-pointer flex-col justify-between rounded-[3px] border p-1.5 transition-colors duration-150">
+                    <div class="flex items-center justify-between font-mono text-[11px]">
+                        <span class="@(isActive ? "font-semibold text-[#e5a030]" : "text-[#96928b]")">#@((idx + 1).ToString("D2"))</span>
+                        <span class="text-[#5a5752]">@(frame.DurationMs)ms</span>
                     </div>
 
-                    <div class="pixcii-checkerboard flex h-14 w-full items-center justify-center overflow-hidden rounded border border-black/30">
+                    <div class="pixcii-checkerboard flex h-12 w-full items-center justify-center overflow-hidden rounded-[2px] border border-[#2e2e2e]">
                         @if (!string.IsNullOrEmpty(frame.PixelDataBase64))
                         {
                             <img src="@($"data:image/png;base64,{frame.PixelDataBase64}")"
@@ -168,7 +166,7 @@
                         }
                         else
                         {
-                            <pre class="m-0 overflow-hidden font-mono text-[3px] leading-[1.05] text-cyan-200/90 whitespace-pre">@GetMiniAsciiPreview(frame.AsciiContent)</pre>
+                            <pre class="m-0 overflow-hidden font-mono text-[3px] leading-[1.05] text-[#eae6df] whitespace-pre">@GetMiniAsciiPreview(frame.AsciiContent)</pre>
                         }
                     </div>
                 </div>
@@ -285,7 +283,6 @@
         }
         catch (OperationCanceledException)
         {
-            // Expected on Pause, Stop, FPS change, or Dispose.
         }
     }
 

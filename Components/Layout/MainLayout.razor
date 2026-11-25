@@ -10,9 +10,9 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout Class="h-screen w-screen overflow-hidden bg-[#0b0d12]">
-    @* Top Creative-Tool Toolbar *@
-    <MudAppBar Elevation="0" Dense="true" Class="border-b border-[#232838] px-2">
+<MudLayout Class="h-screen w-screen overflow-hidden bg-[#141414]">
+    @* Top Toolbar *@
+    <MudAppBar Elevation="0" Dense="true" Class="border-b border-[#2e2e2e] bg-[#1b1b1b] px-3">
         <MudIconButton Icon="@Icons.Material.Filled.Menu"
                        Color="Color.Inherit"
                        Edge="Edge.Start"
@@ -20,57 +20,52 @@
                        OnClick="ToggleDrawer"
                        aria-label="Toggle tool panel" />
 
-        <div class="flex items-center gap-2.5 ml-1">
-            <div class="flex h-7 w-7 items-center justify-center rounded border border-cyan-400/40 bg-cyan-400/10 font-mono text-sm font-bold text-cyan-300">
+        <div class="ml-2 flex items-center gap-2">
+            <div class="flex h-7 w-7 items-center justify-center rounded-[3px] border border-[#3d3d3d] bg-[#222222] font-mono text-xs font-semibold text-[#e5a030]">
                 P#
             </div>
-            <div class="flex items-baseline gap-2">
-                <span class="font-mono text-sm font-bold tracking-widest text-slate-100">PIXCII</span>
-                <span class="hidden sm:inline font-mono text-[10px] uppercase tracking-wider text-slate-400">
-                    ASCII &amp; Pixel Studio
-                </span>
-            </div>
+            <span class="text-sm font-semibold text-[#eae6df]">Pixcii</span>
         </div>
 
         @if (!IsGalleryRoute)
         {
-            <div class="hidden md:flex items-center gap-2 ml-6 rounded border border-[#232838] bg-[#141824] px-2.5 py-1 font-mono text-xs text-slate-300">
-                <span class="max-w-[180px] truncate">@StudioState.Metadata.ProjectName</span>
-                <span class="text-slate-600">|</span>
-                <span class="text-cyan-400">@StudioState.Metadata.Width&times;@StudioState.Metadata.Height</span>
-                <span class="text-slate-600">|</span>
-                <span class="text-amber-400">@StudioState.Metadata.Fps FPS</span>
+            <div class="ml-5 hidden items-center gap-2 rounded-[3px] border border-[#2e2e2e] bg-[#222222] px-2.5 py-1 md:flex">
+                <span class="max-w-[180px] truncate text-xs text-[#eae6df]">@StudioState.Metadata.ProjectName</span>
+                <span class="text-[#5a5752]">|</span>
+                <span class="font-mono text-[11px] text-[#96928b]">@StudioState.Metadata.Width&times;@StudioState.Metadata.Height</span>
+                <span class="text-[#5a5752]">|</span>
+                <span class="font-mono text-[11px] text-[#96928b]">@StudioState.Metadata.Fps FPS</span>
             </div>
         }
 
         <MudSpacer />
 
-        @* Studio & Gallery Navigation *@
-        <div class="flex items-center gap-1 mr-3">
+        @* Navigation *@
+        <div class="mr-3 flex items-center gap-1">
             <MudButton Variant="Variant.Text"
                        Color="Color.Inherit"
                        Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.Brush"
+                       StartIcon="@Icons.Material.Outlined.Brush"
                        Href="/studio">
                 Studio
             </MudButton>
             <MudButton Variant="Variant.Text"
-                       Color="Color.Secondary"
+                       Color="Color.Inherit"
                        Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.Collections"
+                       StartIcon="@Icons.Material.Outlined.GridView"
                        Href="/gallery">
-                Class Gallery
+                Gallery
             </MudButton>
         </div>
 
-        @* Single Save & Export Actions (Studio only) *@
+        @* Primary & Secondary Actions *@
         @if (!IsGalleryRoute)
         {
             <div class="flex items-center gap-2">
                 <MudButton Variant="Variant.Outlined"
                            Color="Color.Default"
                            Size="Size.Small"
-                           StartIcon="@Icons.Material.Filled.Save"
+                           StartIcon="@Icons.Material.Outlined.Save"
                            OnClick="HandleSaveAsync">
                     Save
                 </MudButton>
@@ -78,7 +73,7 @@
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            Size="Size.Small"
-                           StartIcon="@Icons.Material.Filled.IosShare"
+                           StartIcon="@Icons.Material.Outlined.IosShare"
                            OnClick="HandleExportAsync">
                     Export
                 </MudButton>
@@ -86,18 +81,16 @@
         }
     </MudAppBar>
 
-    @* Left Tool Panel *@
+    @* Secondary Tool Drawer *@
     <MudDrawer @bind-Open="_drawerOpen"
                Variant="DrawerVariant.Persistent"
                ClipMode="DrawerClipMode.Always"
                Elevation="0"
-               Class="border-r border-[#232838]">
-        <div class="flex h-full flex-col justify-between p-3 select-none">
-            <div class="space-y-4">
+               Class="border-r border-[#2e2e2e] bg-[#1b1b1b]">
+        <div class="flex h-full flex-col justify-between p-4 select-none">
+            <div class="flex flex-col gap-5">
                 <div>
-                    <div class="mb-2 px-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                        Drawing Tools
-                    </div>
+                    <div class="mb-2 text-sm font-semibold text-[#eae6df]">Tools</div>
                     <div class="grid grid-cols-2 gap-1.5">
                         @foreach (var tool in _tools)
                         {
@@ -114,20 +107,17 @@
                     </div>
                 </div>
 
-                <MudDivider />
+                <hr class="m-0 border-0 border-t border-[#2e2e2e]" />
 
-                @* Active Ink & ASCII Glyph *@
-                <div class="space-y-2.5">
-                    <div class="px-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                        Active Ink &amp; Glyph
-                    </div>
-                    <div class="flex items-center gap-2 rounded border border-[#232838] bg-[#141824] p-2">
-                        <div class="h-8 w-8 shrink-0 rounded border border-white/20"
+                <div class="flex flex-col gap-2">
+                    <div class="text-sm font-semibold text-[#eae6df]">Ink &amp; glyph</div>
+                    <div class="flex items-center gap-2 rounded-[3px] border border-[#2e2e2e] bg-[#222222] p-2">
+                        <div class="h-7 w-7 shrink-0 rounded-[2px] border border-[#3d3d3d]"
                              style="@($"background-color: {StudioState.PrimaryColor};")">
                         </div>
                         <div class="flex flex-col leading-tight">
-                            <span class="font-mono text-xs text-slate-200">@StudioState.PrimaryColor</span>
-                            <span class="font-mono text-[11px] text-amber-400">Glyph: '@StudioState.ActiveAsciiGlyph'</span>
+                            <span class="font-mono text-[11px] text-[#eae6df]">@StudioState.PrimaryColor</span>
+                            <span class="font-mono text-[11px] text-[#96928b]">Glyph '@StudioState.ActiveAsciiGlyph'</span>
                         </div>
                     </div>
 
@@ -137,54 +127,50 @@
                             var selected = StudioState.ActiveAsciiGlyph == ch;
                             <button type="button"
                                     @onclick="() => StudioState.SetActiveGlyph(ch)"
-                                    class="@(selected ? "border-cyan-400 bg-cyan-400/15 text-cyan-300" : "border-[#232838] bg-[#141824] text-slate-300 hover:border-slate-500") flex h-7 items-center justify-center rounded border font-mono text-xs cursor-pointer">
+                                    class="@(selected ? "border-[#e5a030] bg-[#e5a030]/15 text-[#e5a030]" : "border-[#2e2e2e] bg-[#222222] text-[#eae6df] hover:bg-[#2a2a2a]") px-control flex h-8 items-center justify-center rounded-[3px] border font-mono text-xs transition-colors duration-150 cursor-pointer">
                                 @ch
                             </button>
                         }
                     </div>
                 </div>
 
-                <MudDivider />
+                <hr class="m-0 border-0 border-t border-[#2e2e2e]" />
 
-                @* Viewport Controls *@
-                <div class="space-y-2">
-                    <div class="px-1 font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                        Viewport
-                    </div>
+                <div class="flex flex-col gap-2">
+                    <div class="text-sm font-semibold text-[#eae6df]">View</div>
                     <MudSwitch T="bool"
                                Value="StudioState.ShowGrid"
                                ValueChanged="@(_ => StudioState.ToggleGrid())"
                                Color="Color.Primary"
-                               Label="Pixel Grid"
+                               Label="Pixel grid"
                                Size="Size.Small" />
                 </div>
             </div>
 
-            <div class="rounded border border-[#232838] bg-[#141824] px-2.5 py-2 font-mono text-[11px] text-slate-400">
-                <div>Tool: <span class="text-cyan-300">@StudioState.ActiveTool</span></div>
-                <div>Mode: <span class="text-amber-300">@StudioState.Metadata.Mode</span></div>
+            <div class="rounded-[3px] border border-[#2e2e2e] bg-[#222222] px-3 py-2 text-xs text-[#96928b]">
+                <div>Tool: <span class="text-[#eae6df]">@StudioState.ActiveTool</span></div>
+                <div>Mode: <span class="text-[#eae6df]">@StudioState.Metadata.Mode</span></div>
             </div>
         </div>
     </MudDrawer>
 
-    @* Tailwind-Styled Workspace Area *@
+    @* Workspace Area *@
     <MudMainContent Class="flex h-screen min-w-0 flex-col overflow-hidden">
-        <div class="pixcii-workspace-dots flex min-w-0 flex-1 overflow-hidden">
+        <div class="pixcii-workspace flex min-w-0 flex-1 overflow-hidden">
             @Body
         </div>
 
-        @* Studio Status Bar *@
         @if (!IsGalleryRoute)
         {
             var sizeUnit = StudioState.CurrentProjectMode == ProjectMode.Ascii ? "chars" : "px";
-            <footer class="flex h-7 shrink-0 items-center justify-between border-t border-[#232838] bg-[#0e1118] px-4 font-mono text-[11px] text-slate-400">
+            <footer class="flex h-7 shrink-0 items-center justify-between border-t border-[#2e2e2e] bg-[#1b1b1b] px-4 text-[11px] text-[#96928b]">
                 <div class="flex items-center gap-4">
-                    <span>CANVAS: @StudioState.Metadata.Width&times;@StudioState.Metadata.Height @sizeUnit</span>
-                    <span>GRID: @(StudioState.ShowGrid ? "ON" : "OFF")</span>
+                    <span>Canvas <span class="font-mono text-[#eae6df]">@StudioState.Metadata.Width&times;@StudioState.Metadata.Height @sizeUnit</span></span>
+                    <span>Grid <span class="font-mono text-[#eae6df]">@(StudioState.ShowGrid ? "On" : "Off")</span></span>
                 </div>
-                <div class="flex items-center gap-3">
-                    <span>ZOOM: @StudioState.ZoomPercent%</span>
-                    <span class="text-emerald-400">READY</span>
+                <div class="flex items-center gap-4">
+                    <span>Zoom <span class="font-mono text-[#eae6df]">@StudioState.ZoomPercent%</span></span>
+                    <span>Ready</span>
                 </div>
             </footer>
         }
@@ -204,12 +190,12 @@
 
     private static readonly (StudioTool Tool, string Label, string Icon)[] _tools =
     [
-        (StudioTool.Pencil, "Pencil", Icons.Material.Filled.Edit),
-        (StudioTool.Eraser, "Eraser", Icons.Material.Filled.AutoFixOff),
-        (StudioTool.AsciiBrush, "ASCII", Icons.Material.Filled.TextFields),
-        (StudioTool.FillBucket, "Fill", Icons.Material.Filled.FormatColorFill),
-        (StudioTool.Eyedropper, "Picker", Icons.Material.Filled.Colorize),
-        (StudioTool.Marquee, "Select", Icons.Material.Filled.SelectAll)
+        (StudioTool.Pencil, "Pencil", Icons.Material.Outlined.Edit),
+        (StudioTool.Eraser, "Eraser", Icons.Material.Outlined.AutoFixOff),
+        (StudioTool.AsciiBrush, "ASCII", Icons.Material.Outlined.TextFields),
+        (StudioTool.FillBucket, "Fill", Icons.Material.Outlined.FormatColorFill),
+        (StudioTool.Eyedropper, "Picker", Icons.Material.Outlined.Colorize),
+        (StudioTool.Marquee, "Select", Icons.Material.Outlined.SelectAll)
     ];
 
     private bool IsGalleryRoute =>
@@ -237,7 +223,7 @@
             MaxWidth = MaxWidth.Medium,
             FullWidth = true
         };
-        await DialogService.ShowAsync<ExportDialog>("Export Studio Art", options);
+        await DialogService.ShowAsync<ExportDialog>("Export", options);
     }
 
     private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)

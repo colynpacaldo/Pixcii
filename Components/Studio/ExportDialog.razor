@@ -5,10 +5,9 @@
 
 <MudDialog>
     <TitleContent>
-        <div class="flex items-center gap-2 font-mono">
-            <MudIcon Icon="@Icons.Material.Filled.IosShare" Color="Color.Primary" />
-            <span class="font-bold tracking-wider">EXPORT STUDIO ART</span>
-            <span class="rounded border border-[#232838] bg-[#141824] px-2 py-0.5 text-xs text-cyan-300">
+        <div class="flex items-center gap-2">
+            <span class="text-sm font-semibold text-[#eae6df]">Export</span>
+            <span class="rounded-[2px] border border-[#3d3d3d] bg-[#222222] px-2 py-0.5 font-mono text-[11px] text-[#96928b]">
                 @_frames.Count @(_frames.Count == 1 ? "frame" : "frames") &middot; @_fps FPS
             </span>
         </div>
@@ -18,21 +17,18 @@
         @if (_frames.Count == 0)
         {
             <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
-                No canvas content or animation frames are ready to export yet.
+                No canvas content or frames are ready to export yet.
             </MudAlert>
         }
         else
         {
-            <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" TabPanelsClass="pt-4">
-                @* ========================================================= *@
-                @* 1. ANIMATED GIF (.gif)                                    *@
-                @* ========================================================= *@
-                <MudTabPanel Text="Animated GIF" Icon="@Icons.Material.Filled.Gif">
-                    <div class="space-y-4">
+            <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true" TabPanelsClass="pt-4">
+                <MudTabPanel Text="Animated GIF" Icon="@Icons.Material.Outlined.Gif">
+                    <div class="flex flex-col gap-4">
                         <div class="flex flex-wrap items-center justify-between gap-3">
                             <div class="w-44">
                                 <MudSelect T="int"
-                                           Label="Pixel Scale"
+                                           Label="Scale"
                                            Variant="Variant.Outlined"
                                            Margin="Margin.Dense"
                                            Value="_gifScale"
@@ -46,14 +42,14 @@
 
                             <MudButton Variant="Variant.Filled"
                                        Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.Download"
+                                       StartIcon="@Icons.Material.Outlined.Download"
                                        Disabled="@(_gifBytes is null || _isBuildingGif)"
                                        OnClick="DownloadGifAsync">
                                 Download .gif
                             </MudButton>
                         </div>
 
-                        <div class="pixcii-checkerboard flex h-60 items-center justify-center overflow-hidden rounded-lg border border-[#232838] p-3">
+                        <div class="pixcii-checkerboard flex h-60 items-center justify-center overflow-hidden rounded-[3px] border border-[#2e2e2e] p-3">
                             @if (_isBuildingGif)
                             {
                                 <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
@@ -69,21 +65,18 @@
                     </div>
                 </MudTabPanel>
 
-                @* ========================================================= *@
-                @* 2. GAME ENGINE SPRITESHEET (.png)                         *@
-                @* ========================================================= *@
-                <MudTabPanel Text="Spritesheet PNG" Icon="@Icons.Material.Filled.ViewWeek">
-                    <div class="space-y-4">
+                <MudTabPanel Text="Spritesheet PNG" Icon="@Icons.Material.Outlined.ViewWeek">
+                    <div class="flex flex-col gap-4">
                         <div class="flex flex-wrap items-center justify-between gap-3">
                             <div class="flex flex-wrap items-center gap-3">
                                 <div class="w-40">
                                     <MudSelect T="int"
-                                               Label="Pixel Scale"
+                                               Label="Scale"
                                                Variant="Variant.Outlined"
                                                Margin="Margin.Dense"
                                                Value="_sheetScale"
                                                ValueChanged="OnSheetScaleChanged">
-                                        <MudSelectItem Value="1">1&times; (Game Engine)</MudSelectItem>
+                                        <MudSelectItem Value="1">1&times; (Engine)</MudSelectItem>
                                         <MudSelectItem Value="2">2&times;</MudSelectItem>
                                         <MudSelectItem Value="4">4&times;</MudSelectItem>
                                         <MudSelectItem Value="8">8&times;</MudSelectItem>
@@ -94,13 +87,13 @@
                                            Value="_sheetTransparent"
                                            ValueChanged="OnSheetTransparencyChanged"
                                            Color="Color.Primary"
-                                           Label="Transparent BG"
+                                           Label="Transparent background"
                                            Size="Size.Small" />
                             </div>
 
                             <MudButton Variant="Variant.Filled"
                                        Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.Download"
+                                       StartIcon="@Icons.Material.Outlined.Download"
                                        Disabled="@(_sheetResult is null || _isBuildingSheet)"
                                        OnClick="DownloadSpritesheetAsync">
                                 Download .png
@@ -109,16 +102,16 @@
 
                         @if (_sheetResult is not null)
                         {
-                            <div class="flex flex-wrap items-center gap-3 rounded border border-[#232838] bg-[#141824] px-3 py-2 font-mono text-xs text-slate-300">
-                                <span>Frame Size: <strong class="text-cyan-300">@_sheetResult.FrameWidth &times; @_sheetResult.FrameHeight px</strong></span>
-                                <span class="text-slate-600">|</span>
-                                <span>Frames: <strong class="text-amber-300">@_sheetResult.FrameCount</strong></span>
-                                <span class="text-slate-600">|</span>
-                                <span>Sheet Size: <strong class="text-emerald-300">@_sheetResult.SheetWidth &times; @_sheetResult.SheetHeight px</strong></span>
+                            <div class="flex flex-wrap items-center gap-3 rounded-[3px] border border-[#2e2e2e] bg-[#222222] px-3 py-2 text-xs text-[#96928b]">
+                                <span>Frame <span class="font-mono text-[#eae6df]">@_sheetResult.FrameWidth&times;@_sheetResult.FrameHeight px</span></span>
+                                <span class="text-[#5a5752]">|</span>
+                                <span>Frames <span class="font-mono text-[#eae6df]">@_sheetResult.FrameCount</span></span>
+                                <span class="text-[#5a5752]">|</span>
+                                <span>Sheet <span class="font-mono text-[#eae6df]">@_sheetResult.SheetWidth&times;@_sheetResult.SheetHeight px</span></span>
                             </div>
                         }
 
-                        <div class="pixcii-checkerboard flex h-52 items-center justify-center overflow-x-auto rounded-lg border border-[#232838] p-3">
+                        <div class="pixcii-checkerboard flex h-52 items-center justify-center overflow-x-auto rounded-[3px] border border-[#2e2e2e] p-3">
                             @if (_isBuildingSheet)
                             {
                                 <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
@@ -134,31 +127,28 @@
                     </div>
                 </MudTabPanel>
 
-                @* ========================================================= *@
-                @* 3. GAME-DEV CODE SNIPPETS & TEXT / HTML                   *@
-                @* ========================================================= *@
-                <MudTabPanel Text="Code & Text" Icon="@Icons.Material.Filled.Code">
-                    <div class="space-y-3">
+                <MudTabPanel Text="Code & text" Icon="@Icons.Material.Outlined.Code">
+                    <div class="flex flex-col gap-3">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <MudToggleGroup T="string"
                                             Value="_codeFormat"
                                             ValueChanged="OnCodeFormatChanged"
-                                            Color="Color.Secondary"
+                                            Color="Color.Primary"
                                             CheckMark="false"
                                             Outlined="true"
                                             SelectionMode="SelectionMode.SingleSelection"
                                             Size="Size.Small">
-                                <MudToggleItem Value="@("csharp")" Text="C# Console" />
-                                <MudToggleItem Value="@("json")" Text="JSON Frames" />
+                                <MudToggleItem Value="@("csharp")" Text="C# console" />
+                                <MudToggleItem Value="@("json")" Text="JSON" />
                                 <MudToggleItem Value="@("txt")" Text="Raw .txt" />
-                                <MudToggleItem Value="@("html")" Text="HTML Page" />
+                                <MudToggleItem Value="@("html")" Text="HTML" />
                             </MudToggleGroup>
 
                             <div class="flex items-center gap-2">
                                 <MudButton Variant="Variant.Outlined"
                                            Color="Color.Default"
                                            Size="Size.Small"
-                                           StartIcon="@Icons.Material.Filled.ContentCopy"
+                                           StartIcon="@Icons.Material.Outlined.ContentCopy"
                                            OnClick="CopySnippetAsync">
                                     Copy
                                 </MudButton>
@@ -166,14 +156,14 @@
                                 <MudButton Variant="Variant.Filled"
                                            Color="Color.Primary"
                                            Size="Size.Small"
-                                           StartIcon="@Icons.Material.Filled.Download"
+                                           StartIcon="@Icons.Material.Outlined.Download"
                                            OnClick="DownloadSnippetAsync">
                                     Download
                                 </MudButton>
                             </div>
                         </div>
 
-                        <pre class="max-h-64 overflow-auto rounded-lg border border-[#232838] bg-[#0b0d12] p-3 font-mono text-xs leading-relaxed text-cyan-200 whitespace-pre">@_generatedCodeText</pre>
+                        <pre class="max-h-64 overflow-auto rounded-[3px] border border-[#2e2e2e] bg-[#141414] p-3 font-mono text-[11px] leading-relaxed text-[#eae6df] whitespace-pre">@_generatedCodeText</pre>
                     </div>
                 </MudTabPanel>
             </MudTabs>
@@ -194,20 +184,17 @@
     private int _fps = 8;
     private string _baseFileName = "pixcii-art";
 
-    // GIF state
     private int _gifScale = 4;
     private bool _isBuildingGif;
     private byte[]? _gifBytes;
     private string? _gifPreviewUrl;
 
-    // Spritesheet state
     private int _sheetScale = 1;
     private bool _sheetTransparent = true;
     private bool _isBuildingSheet;
     private SpritesheetExportResult? _sheetResult;
     private string? _sheetPreviewUrl;
 
-    // Code/Text state
     private string _codeFormat = "csharp";
     private string _generatedCodeText = string.Empty;
 
@@ -295,7 +282,7 @@
 
         try
         {
-            var bgHex = _sheetTransparent ? null : "#0B0D12";
+            var bgHex = _sheetTransparent ? null : "#141414";
             var result = await Task.Run(() =>
                 ExportService.ExportSpritesheetAsync(_frames, _mode, _sheetScale, bgHex));
             _sheetResult = result;
@@ -342,7 +329,7 @@
     {
         if (string.IsNullOrEmpty(_generatedCodeText)) return;
         await JS.InvokeVoidAsync("pixciiDownload.copyText", _generatedCodeText);
-        Snackbar.Add("Copied export snippet to clipboard.", Severity.Success);
+        Snackbar.Add("Copied to clipboard.", Severity.Success);
     }
 
     private async Task DownloadSnippetAsync()

@@ -2,39 +2,36 @@
 
 <MudDialog>
     <TitleContent>
-        <div class="flex items-center gap-2 font-mono">
-            <MudIcon Icon="@Icons.Material.Filled.Save" Color="Color.Primary" />
-            <span class="font-bold tracking-wider">SAVE PIXCII PROJECT</span>
-        </div>
+        <div class="text-sm font-semibold text-[#eae6df]">Save project</div>
     </TitleContent>
 
     <DialogContent>
-        <div class="space-y-4 pt-1">
+        <div class="flex flex-col gap-4 pt-1">
             <MudTextField T="string"
                           @bind-Value="_title"
-                          Label="Project Title"
+                          Label="Title"
                           Variant="Variant.Outlined"
                           Required="true"
                           MaxLength="120"
                           Immediate="true"
-                          Placeholder="e.g. Cyber Slime Idle" />
+                          Placeholder="Untitled sprite" />
 
             <MudTextField T="string"
                           @bind-Value="_authorName"
-                          Label="Author Name"
+                          Label="Author"
                           Variant="Variant.Outlined"
                           Required="true"
                           MaxLength="80"
                           Immediate="true"
-                          Placeholder="Your name or handle" />
+                          Placeholder="Your name" />
 
-            <div class="rounded border border-[#232838] bg-[#141824] p-3">
+            <div class="rounded-[3px] border border-[#2e2e2e] bg-[#222222] p-3">
                 <MudSwitch T="bool"
                            @bind-Value="_isPublic"
-                           Color="Color.Secondary"
-                           Label="Publish to Class Gallery" />
-                <div class="mt-1 font-mono text-[11px] text-slate-400">
-                    When enabled, classmates can view, react to, and remix this project in the Class Gallery.
+                           Color="Color.Primary"
+                           Label="Publish to Gallery" />
+                <div class="mt-1 text-xs text-[#96928b]">
+                    When enabled, anyone can view, react to, and remix this project in the Gallery.
                 </div>
             </div>
         </div>
@@ -44,10 +41,10 @@
         <MudButton OnClick="Cancel">Cancel</MudButton>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Save"
+                   StartIcon="@Icons.Material.Outlined.Save"
                    Disabled="@(string.IsNullOrWhiteSpace(_title) || string.IsNullOrWhiteSpace(_authorName))"
                    OnClick="Submit">
-            Save Project
+            Save
         </MudButton>
     </DialogActions>
 </MudDialog>

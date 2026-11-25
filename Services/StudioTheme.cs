@@ -8,49 +8,73 @@ public static class StudioTheme
     {
         PaletteDark = new PaletteDark
         {
-            Primary = "#22D3EE",
-            PrimaryContrastText = "#091017",
-            Secondary = "#F59E0B",
-            SecondaryContrastText = "#140D02",
-            Tertiary = "#A78BFA",
-            Success = "#10B981",
-            Info = "#38BDF8",
-            Warning = "#FBBF24",
-            Error = "#F43F5E",
-            Background = "#0B0D12",
-            BackgroundGray = "#11141D",
-            Surface = "#141824",
-            DrawerBackground = "#10131C",
-            DrawerText = "#CBD5E1",
-            DrawerIcon = "#94A3B8",
-            AppbarBackground = "#0E1118",
-            AppbarText = "#F1F5F9",
-            LinesDefault = "#232838",
-            Divider = "#232838",
-            TextPrimary = "#F1F5F9",
-            TextSecondary = "#94A3B8",
-            TextDisabled = "#475569",
-            ActionDefault = "#94A3B8",
-            ActionDisabled = "#475569"
+            // Single restrained warm amber accent
+            Primary = "#E5A030",
+            PrimaryDarken = "#C98922",
+            PrimaryLighten = "#F0B24A",
+            PrimaryContrastText = "#14110B",
+
+            Secondary = "#E5A030",
+            SecondaryDarken = "#C98922",
+            SecondaryLighten = "#F0B24A",
+            SecondaryContrastText = "#14110B",
+
+            Tertiary = "#E5A030",
+            TertiaryContrastText = "#14110B",
+
+            Info = "#96928B",
+            Success = "#E5A030",
+            Warning = "#E5A030",
+            Error = "#C95A52",
+
+            // Neutral charcoal surfaces & warm off-white text
+            Background = "#141414",
+            BackgroundGray = "#1B1B1B",
+            Surface = "#222222",
+            DrawerBackground = "#1B1B1B",
+            DrawerText = "#EAE6DF",
+            DrawerIcon = "#96928B",
+            AppbarBackground = "#1B1B1B",
+            AppbarText = "#EAE6DF",
+            LinesDefault = "#2E2E2E",
+            LinesInputs = "#3D3D3D",
+            Divider = "#2E2E2E",
+            TextPrimary = "#EAE6DF",
+            TextSecondary = "#96928B",
+            TextDisabled = "#5A5752",
+            ActionDefault = "#96928B",
+            ActionDisabled = "#5A5752"
         },
         LayoutProperties = new LayoutProperties
         {
-            DefaultBorderRadius = "6px",
+            DefaultBorderRadius = "3px",
             DrawerWidthLeft = "240px",
-            AppbarHeight = "52px"
+            AppbarHeight = "48px"
         },
         Typography = new Typography
         {
             Default = new DefaultTypography
             {
                 FontFamily = ["Inter", "Segoe UI", "system-ui", "sans-serif"],
-                FontSize = "0.875rem"
+                FontSize = "0.75rem", // 12px
+                LineHeight = "1.4",
+                LetterSpacing = "0"
+            },
+            H6 = new H6Typography
+            {
+                FontFamily = ["Inter", "Segoe UI", "system-ui", "sans-serif"],
+                FontSize = "0.875rem", // 14px
+                FontWeight = "600",
+                LineHeight = "1.35",
+                LetterSpacing = "0"
             },
             Button = new ButtonTypography
             {
+                FontFamily = ["Inter", "Segoe UI", "system-ui", "sans-serif"],
                 TextTransform = "none",
-                FontWeight = "600",
-                FontSize = "0.8125rem"
+                FontWeight = "500",
+                FontSize = "0.75rem", // 12px
+                LetterSpacing = "0"
             }
         }
     };

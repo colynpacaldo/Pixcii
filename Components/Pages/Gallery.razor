@@ -6,30 +6,25 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 
-<PageTitle>Pixcii — Class Showcase Gallery</PageTitle>
+<PageTitle>Pixcii — Gallery</PageTitle>
 
-<div class="flex h-full w-full min-w-0 flex-col overflow-hidden">
+<div class="flex h-full w-full min-w-0 flex-col overflow-hidden bg-[#141414]">
     @* ===================================================================== *@
-    @* GALLERY HEADER & FILTER BAR                                           *@
+    @* GALLERY HEADER                                                        *@
     @* ===================================================================== *@
-    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[#232838] bg-[#10131c] px-6 py-4">
+    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[#2e2e2e] bg-[#1b1b1b] px-6 py-4">
         <div class="min-w-0">
-            <div class="flex items-center gap-2">
-                <MudIcon Icon="@Icons.Material.Filled.Collections" Color="Color.Primary" />
-                <h1 class="m-0 font-mono text-lg font-bold tracking-wider text-slate-100">
-                    CLASS SHOWCASE GALLERY
-                </h1>
-            </div>
-            <p class="mt-0.5 font-mono text-xs text-slate-400">
-                React to classmates&apos; animations or fork any project into your Studio with 1-click Remix.
+            <h1 class="m-0 text-sm font-semibold text-[#eae6df]">Gallery</h1>
+            <p class="mt-0.5 text-xs text-[#96928b]">
+                Browse animations from the class, react, or open a copy in the Studio.
             </p>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
-            <div class="w-48">
+            <div class="w-44">
                 <MudTextField T="string"
                               @bind-Value="_remixAuthorName"
-                              Label="Your Name (for Remixes)"
+                              Label="Your name"
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense"
                               Placeholder="Classmate" />
@@ -37,76 +32,77 @@
 
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Default"
-                       StartIcon="@Icons.Material.Filled.Refresh"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Refresh"
                        OnClick="LoadGalleryAsync">
                 Refresh
             </MudButton>
 
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Brush"
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Brush"
                        Href="/studio">
                 Open Studio
             </MudButton>
         </div>
     </div>
 
-    @* Filter Chips with Visible Selected State *@
-    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#232838] bg-[#0e1118] px-6 py-3">
+    @* Filter Chips *@
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#2e2e2e] bg-[#1b1b1b] px-6 py-2">
         <MudChipSet T="string"
                     SelectedValue="_selectedFilter"
                     SelectedValueChanged="OnFilterChanged"
                     SelectionMode="SelectionMode.SingleSelection"
                     CheckMark="true">
             <MudChip Value="@("All")"
-                     Text="All Projects"
-                     Color="Color.Primary"
+                     Text="All"
+                     Color="@(_selectedFilter == "All" ? Color.Primary : Color.Default)"
                      Variant="@(_selectedFilter == "All" ? Variant.Filled : Variant.Outlined)" />
             <MudChip Value="@("Ascii")"
-                     Text="ASCII Only"
-                     Color="Color.Info"
+                     Text="ASCII"
+                     Color="@(_selectedFilter == "Ascii" ? Color.Primary : Color.Default)"
                      Variant="@(_selectedFilter == "Ascii" ? Variant.Filled : Variant.Outlined)" />
             <MudChip Value="@("PixelArt")"
-                     Text="Pixel Art Only"
-                     Color="Color.Secondary"
+                     Text="Pixel art"
+                     Color="@(_selectedFilter == "PixelArt" ? Color.Primary : Color.Default)"
                      Variant="@(_selectedFilter == "PixelArt" ? Variant.Filled : Variant.Outlined)" />
             <MudChip Value="@("Popular")"
-                     Text="Most Popular"
-                     Color="Color.Tertiary"
+                     Text="Most popular"
+                     Color="@(_selectedFilter == "Popular" ? Color.Primary : Color.Default)"
                      Variant="@(_selectedFilter == "Popular" ? Variant.Filled : Variant.Outlined)" />
         </MudChipSet>
 
-        <span class="font-mono text-xs text-slate-400">
-            @_projects.Count public @(_projects.Count == 1 ? "creation" : "creations")
+        <span class="font-mono text-[11px] text-[#96928b]">
+            @_projects.Count @(_projects.Count == 1 ? "project" : "projects")
         </span>
     </div>
 
     @* ===================================================================== *@
-    @* RESPONSIVE CARD GRID (NO HORIZONTAL OVERFLOW)                         *@
+    @* RESPONSIVE CARD GRID                                                  *@
     @* ===================================================================== *@
-    <div class="pixcii-workspace-dots min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-6">
+    <div class="pixcii-workspace min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-6">
         @if (_isLoading)
         {
             <div class="flex h-64 items-center justify-center">
-                <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Medium" />
             </div>
         }
         else if (_projects.Count == 0)
         {
-            <div class="mx-auto mt-12 flex max-w-md flex-col items-center gap-3 rounded-lg border border-[#232838] bg-[#10131c] p-8 text-center">
-                <MudIcon Icon="@Icons.Material.Outlined.AutoAwesomeMotion" Size="Size.Large" Color="Color.Primary" />
-                <div class="font-mono text-sm font-semibold text-slate-200">No Public Animations Yet</div>
-                <p class="text-xs text-slate-400">
-                    Create an ASCII or Pixel Art loop in the Studio and click Save &rarr; Publish to Class Gallery to feature it here!
+            <div class="mx-auto mt-12 flex max-w-md flex-col items-center gap-3 rounded-[3px] border border-[#2e2e2e] bg-[#1b1b1b] p-6 text-center">
+                <div class="text-sm font-semibold text-[#eae6df]">No public projects yet</div>
+                <p class="text-xs text-[#96928b]">
+                    Save an animation in the Studio and turn on Publish to Gallery to show it here.
                 </p>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/studio">
-                    Create First Animation
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" Href="/studio">
+                    Open Studio
                 </MudButton>
             </div>
         }
         else
         {
-            <div class="grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div class="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 @foreach (var project in _projects)
                 {
                     var orderedFrames = GetOrderedFrames(project);
@@ -116,10 +112,10 @@
 
                     <MudCard @key="project.Id"
                              Elevation="0"
-                             Class="flex min-w-0 flex-col overflow-hidden rounded-lg border border-[#232838] bg-[#141824]">
+                             Class="flex min-w-0 flex-col overflow-hidden rounded-[3px] border border-[#2e2e2e] bg-[#1b1b1b]">
 
-                        @* Live Looping Mini-Preview (scaled to fit card cleanly without cropping) *@
-                        <div class="pixcii-checkerboard relative flex h-48 w-full min-w-0 items-center justify-center overflow-hidden border-b border-[#232838] p-3">
+                        @* Uniform 4:3 Preview Well (12px padding) *@
+                        <div class="pixcii-checkerboard relative flex aspect-[4/3] w-full min-w-0 items-center justify-center overflow-hidden border-b border-[#2e2e2e] p-3">
                             @if (activeFrame is not null && project.Mode == ProjectMode.PixelArt && !string.IsNullOrEmpty(activeFrame.PixelDataBase64))
                             {
                                 <img src="@($"data:image/png;base64,{activeFrame.PixelDataBase64}")"
@@ -130,73 +126,62 @@
                             else if (activeFrame is not null && project.Mode == ProjectMode.Ascii && GetCachedAsciiPreview(activeFrame) is { } ascii)
                             {
                                 var scale = GetAsciiPreviewScale(ascii.Columns, ascii.Rows);
-                                <div class="flex h-full w-full items-center justify-center overflow-hidden rounded bg-[#090b10]/90">
+                                <div class="flex h-full w-full items-center justify-center overflow-hidden rounded-[2px] border border-[#2e2e2e] bg-[#141414]">
                                     <pre class="m-0 font-mono leading-[1.1] whitespace-pre select-none"
                                          style="@($"font-size: 10px; transform: scale({scale.ToString("0.###", CultureInfo.InvariantCulture)}); transform-origin: center center;")">@((MarkupString)ascii.ColoredHtml)</pre>
                                 </div>
                             }
                             else
                             {
-                                @* Visible fallback preview when legacy DB rows have empty frame content *@
-                                <div class="flex h-full w-full items-center justify-center overflow-hidden rounded bg-[#090b10]/90 p-3">
-                                    <pre class="m-0 text-center font-mono text-[10px] leading-tight text-cyan-300 whitespace-pre select-none">@BuildFallbackAsciiBanner(project)</pre>
+                                <div class="flex h-full w-full items-center justify-center overflow-hidden rounded-[2px] border border-[#2e2e2e] bg-[#141414] p-3">
+                                    <pre class="m-0 text-center font-mono text-[11px] leading-tight text-[#96928b] whitespace-pre select-none">@BuildFallbackAsciiBanner(project)</pre>
                                 </div>
-                            }
-
-                            @* Top-Right Mode & Frame Count Badges *@
-                            <div class="absolute top-2 right-2 z-10 flex items-center gap-1.5">
-                                <span class="@(project.Mode == ProjectMode.Ascii ? "border-cyan-400/40 bg-cyan-400/15 text-cyan-300" : "border-amber-400/40 bg-amber-400/15 text-amber-300") rounded border px-1.5 py-0.5 font-mono text-[10px] font-semibold backdrop-blur-sm">
-                                    @(project.Mode == ProjectMode.Ascii ? "ASCII" : "PIXEL")
-                                </span>
-                                <span class="rounded border border-[#232838] bg-[#0b0d12]/85 px-1.5 py-0.5 font-mono text-[10px] text-slate-300">
-                                    @orderedFrames.Count f &middot; @project.Fps FPS
-                                </span>
-                            </div>
-
-                            @if (project.RemixedFromId.HasValue)
-                            {
-                                <span class="absolute top-2 left-2 z-10 rounded border border-purple-400/40 bg-purple-400/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-purple-300">
-                                    REMIX
-                                </span>
                             }
                         </div>
 
-                        @* Card Metadata *@
-                        <div class="flex flex-1 flex-col justify-between gap-3 p-4">
+                        @* Card Body (12px padding) *@
+                        <div class="flex flex-1 flex-col justify-between gap-3 p-3">
                             <div class="min-w-0">
-                                <div class="truncate font-mono text-sm font-bold text-slate-100" title="@project.Title">
-                                    @project.Title
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="truncate text-sm font-medium text-[#eae6df]" title="@project.Title">
+                                        @project.Title
+                                    </div>
+                                    <span class="shrink-0 rounded-[2px] border border-[#3d3d3d] bg-[#222222] px-1.5 py-0.5 text-[11px] text-[#96928b]">
+                                        @(project.Mode == ProjectMode.Ascii ? "ASCII" : "Pixel")
+                                    </span>
                                 </div>
-                                <div class="mt-0.5 flex items-center justify-between gap-2 font-mono text-[11px] text-slate-400">
-                                    <span class="truncate">by <span class="text-slate-200">@project.AuthorName</span></span>
-                                    <span class="shrink-0">@project.UpdatedAt.ToLocalTime().ToString("MMM d, HH:mm")</span>
+
+                                <div class="mt-1 flex items-center justify-between gap-2 text-xs text-[#96928b]">
+                                    <span class="truncate">@project.AuthorName@(project.RemixedFromId.HasValue ? " · Remix" : "")</span>
+                                    <span class="shrink-0 font-mono text-[11px]">@orderedFrames.Count f · @project.Fps FPS</span>
                                 </div>
                             </div>
 
-                            @* Quick Reactions + Remix in Studio *@
-                            <div class="flex flex-col gap-2.5">
+                            <div class="flex flex-col gap-2">
+                                @* Quiet Reaction Row (MudBlazor SVG icons + mono count; neutral until clicked) *@
                                 <div class="flex items-center gap-1.5">
                                     @foreach (var reaction in _reactionButtons)
                                     {
                                         var count = GetReactionCount(project.Id, reaction.Key);
+                                        var clicked = _clickedReactions.Contains((project.Id, reaction.Key));
                                         <button type="button"
+                                                title="@reaction.Label"
                                                 @onclick="() => ReactAsync(project.Id, reaction.Key)"
-                                                class="flex flex-1 items-center justify-center gap-1 rounded border border-[#232838] bg-[#0e1118] px-2 py-1 font-mono text-xs text-slate-200 transition-colors hover:border-cyan-400/50 hover:bg-cyan-400/10 cursor-pointer">
-                                            <span>@reaction.Emoji</span>
-                                            <span class="text-cyan-300">@count</span>
+                                                class="@(clicked ? "border-[#e5a030]/70 text-[#e5a030]" : "border-[#2e2e2e] text-[#96928b] hover:border-[#3d3d3d] hover:text-[#eae6df]") px-btn flex flex-1 items-center justify-center gap-1.5 border bg-[#222222] px-2 cursor-pointer">
+                                            <MudIcon Icon="@reaction.Icon" Size="Size.Small" />
+                                            <span class="font-mono text-[11px]">@count</span>
                                         </button>
                                     }
                                 </div>
 
-                                <MudButton Variant="Variant.Filled"
-                                           Color="Color.Primary"
-                                           Size="Size.Small"
-                                           FullWidth="true"
-                                           StartIcon="@Icons.Material.Filled.ForkRight"
-                                           Disabled="@(_forkingProjectId == project.Id)"
-                                           OnClick="() => RemixInStudioAsync(project.Id)">
-                                    @(_forkingProjectId == project.Id ? "Forking..." : "Remix in Studio")
-                                </MudButton>
+                                @* Full-Width Secondary Remix Button (turns accent on hover) *@
+                                <button type="button"
+                                        disabled="@(_forkingProjectId == project.Id)"
+                                        @onclick="() => RemixInStudioAsync(project.Id)"
+                                        class="px-btn flex w-full items-center justify-center gap-1.5 border border-[#3d3d3d] bg-[#222222] px-3 text-xs font-medium text-[#eae6df] hover:border-[#e5a030] hover:bg-[#e5a030] hover:text-[#14110b] cursor-pointer">
+                                    <MudIcon Icon="@Icons.Material.Outlined.ForkRight" Size="Size.Small" />
+                                    <span>@(_forkingProjectId == project.Id ? "Opening..." : "Remix")</span>
+                                </button>
                             </div>
                         </div>
                     </MudCard>
@@ -207,17 +192,18 @@
 </div>
 
 @code {
-    private static readonly (string Key, string Emoji)[] _reactionButtons =
+    private static readonly (string Key, string Label, string Icon)[] _reactionButtons =
     [
-        ("Fire", "🔥"),
-        ("Art", "🎨"),
-        ("Funny", "😂")
+        ("Fire", "Fire", Icons.Material.Outlined.LocalFireDepartment),
+        ("Art", "Craft", Icons.Material.Outlined.Palette),
+        ("Funny", "Fun", Icons.Material.Outlined.SentimentSatisfiedAlt)
     ];
 
     private IReadOnlyList<StudioProject> _projects = [];
     private Dictionary<Guid, List<ArtFrame>> _orderedFramesByProject = [];
     private Dictionary<Guid, int> _lastFrameIndices = [];
     private Dictionary<Guid, Dictionary<string, int>> _reactionCounts = [];
+    private readonly HashSet<(Guid ProjectId, string ReactionType)> _clickedReactions = [];
     private readonly Dictionary<Guid, AsciiResult?> _asciiPreviewCache = [];
 
     private string _selectedFilter = "All";
@@ -314,6 +300,7 @@
         {
             var updated = await ProjectService.AddReactionAsync(projectId, reactionType);
             _reactionCounts[projectId] = updated;
+            _clickedReactions.Add((projectId, reactionType));
         }
         catch (Exception ex)
         {
@@ -357,14 +344,14 @@
     {
         var naturalWidth = Math.Max(1, columns) * 6.0;
         var naturalHeight = Math.Max(1, rows) * 11.0;
-        return Math.Clamp(Math.Min(230.0 / naturalWidth, 152.0 / naturalHeight), 0.12, 1.15);
+        return Math.Clamp(Math.Min(230.0 / naturalWidth, 160.0 / naturalHeight), 0.12, 1.15);
     }
 
     private static string BuildFallbackAsciiBanner(StudioProject project)
     {
         var label = project.Title.Length > 18 ? project.Title[..18] : project.Title;
-        var border = new string('=', Math.Max(12, label.Length + 4));
-        return $"+{border}+\n|  {label}  |\n|  {project.Width}x{project.Height} {project.Mode.ToString().ToUpperInvariant()}  |\n+{border}+";
+        var border = new string('-', Math.Max(12, label.Length + 4));
+        return $"+{border}+\n|  {label}  |\n|  {project.Width}x{project.Height} {project.Mode}  |\n+{border}+";
     }
 
     private void StartPreviewLoop()
@@ -404,7 +391,6 @@
         }
         catch (OperationCanceledException)
         {
-            // Expected on dispose.
         }
     }
 
