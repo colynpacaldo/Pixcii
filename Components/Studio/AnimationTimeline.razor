@@ -1,0 +1,308 @@
+@implements IDisposable
+@inject StudioStateService StudioState
+@inject MediaConversionService ConversionService
+
+<div class="flex shrink-0 flex-col border-t border-[#232838] bg-[#0e1118] select-none">
+    @* ===================================================================== *@
+    @* TIMELINE TRANSPORT & FX TOOLBAR                                       *@
+    @* ===================================================================== *@
+    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[#232838] px-3 py-1.5">
+        @* Frame Management Actions *@
+        <div class="flex items-center gap-1">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.AddBox"
+                       Disabled="@(!HasCanvasContent)"
+                       OnClick="HandleAddFrameAsync">
+                Add Frame
+            </MudButton>
+
+            <MudTooltip Text="Duplicate Active Frame">
+                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                               Size="Size.Small"
+                               Color="Color.Default"
+                               Disabled="@(StudioState.ActiveFrameIndex < 0)"
+                               OnClick="() => StudioState.DuplicateFrame(StudioState.ActiveFrameIndex)" />
+            </MudTooltip>
+
+            <MudTooltip Text="Move Frame Left">
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft"
+                               Size="Size.Small"
+                               Color="Color.Default"
+                               Disabled="@(StudioState.ActiveFrameIndex <= 0)"
+                               OnClick="() => StudioState.MoveFrameLeft(StudioState.ActiveFrameIndex)" />
+            </MudTooltip>
+
+            <MudTooltip Text="Move Frame Right">
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight"
+                               Size="Size.Small"
+                               Color="Color.Default"
+                               Disabled="@(StudioState.ActiveFrameIndex < 0 || StudioState.ActiveFrameIndex >= StudioState.Frames.Count - 1)"
+                               OnClick="() => StudioState.MoveFrameRight(StudioState.ActiveFrameIndex)" />
+            </MudTooltip>
+
+            <MudTooltip Text="Delete Active Frame">
+                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               Disabled="@(StudioState.ActiveFrameIndex < 0)"
+                               OnClick="HandleDeleteActiveFrame" />
+            </MudTooltip>
+        </div>
+
+        @* Playback Loop Controls (1–24 FPS) *@
+        <div class="flex items-center gap-2">
+            <div class="flex items-center gap-0.5 rounded border border-[#232838] bg-[#141824] px-1">
+                <MudTooltip Text="Step Backward">
+                    <MudIconButton Icon="@Icons.Material.Filled.SkipPrevious"
+                                   Size="Size.Small"
+                                   Color="Color.Default"
+                                   Disabled="@(StudioState.Frames.Count == 0)"
+                                   OnClick="HandleStepBackward" />
+                </MudTooltip>
+
+                <MudTooltip Text="@(StudioState.IsPlaying ? "Pause Loop" : "Play Loop")">
+                    <MudIconButton Icon="@(StudioState.IsPlaying ? Icons.Material.Filled.Pause : Icons.Material.Filled.PlayArrow)"
+                                   Size="Size.Small"
+                                   Color="@(StudioState.IsPlaying ? Color.Secondary : Color.Primary)"
+                                   Disabled="@(StudioState.Frames.Count < 2)"
+                                   OnClick="TogglePlayback" />
+                </MudTooltip>
+
+                <MudTooltip Text="Step Forward">
+                    <MudIconButton Icon="@Icons.Material.Filled.SkipNext"
+                                   Size="Size.Small"
+                                   Color="Color.Default"
+                                   Disabled="@(StudioState.Frames.Count == 0)"
+                                   OnClick="HandleStepForward" />
+                </MudTooltip>
+            </div>
+
+            <div class="flex items-center gap-2 rounded border border-[#232838] bg-[#141824] px-2.5 py-0.5">
+                <span class="font-mono text-[11px] text-amber-300">@StudioState.Fps FPS</span>
+                <div class="w-24">
+                    <MudSlider T="int"
+                               Value="StudioState.Fps"
+                               ValueChanged="OnFpsChanged"
+                               Min="1"
+                               Max="24"
+                               Step="1"
+                               Size="Size.Small"
+                               Color="Color.Secondary" />
+                </div>
+            </div>
+        </div>
+
+        @* Onion Skinning & Instant Animation FX Menu *@
+        <div class="flex items-center gap-2">
+            <MudTooltip Text="Overlay previous frame at 30% opacity while editing">
+                <MudSwitch T="bool"
+                           Value="StudioState.OnionSkinningEnabled"
+                           ValueChanged="@(_ => StudioState.ToggleOnionSkinning())"
+                           Color="Color.Tertiary"
+                           Label="Onion Skin"
+                           Size="Size.Small" />
+            </MudTooltip>
+
+            <MudMenu Label="Instant FX"
+                     Variant="Variant.Outlined"
+                     Color="Color.Secondary"
+                     Size="Size.Small"
+                     StartIcon="@Icons.Material.Filled.AutoAwesome"
+                     EndIcon="@Icons.Material.Filled.KeyboardArrowDown"
+                     Disabled="@(!HasCanvasContent)">
+                <MudMenuItem Icon="@Icons.Material.Filled.BrokenImage"
+                             OnClick="() => TriggerFxAsync(AnimationFxPreset.GlitchVhs)">
+                    Glitch / VHS (8 frames)
+                </MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.Waves"
+                             OnClick="() => TriggerFxAsync(AnimationFxPreset.WaveWobble)">
+                    Wave / Wobble (8 frames)
+                </MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.Flare"
+                             OnClick="() => TriggerFxAsync(AnimationFxPreset.PulseBreathing)">
+                    Pulse / Breathing (8 frames)
+                </MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.VerticalAlignCenter"
+                             OnClick="() => TriggerFxAsync(AnimationFxPreset.Bounce)">
+                    Bounce Idle Loop (8 frames)
+                </MudMenuItem>
+            </MudMenu>
+        </div>
+    </div>
+
+    @* ===================================================================== *@
+    @* HORIZONTAL SCROLLABLE FILMSTRIP                                       *@
+    @* ===================================================================== *@
+    <div class="flex h-24 items-center gap-2 overflow-x-auto px-3 py-2">
+        @if (StudioState.Frames.Count == 0)
+        {
+            <div class="flex h-full w-full items-center justify-center rounded border border-dashed border-[#232838] font-mono text-xs text-slate-500">
+                No animation frames yet — click <span class="mx-1 text-cyan-300">Add Frame</span> or pick an <span class="mx-1 text-amber-300">Instant FX</span> preset.
+            </div>
+        }
+        else
+        {
+            @for (var i = 0; i < StudioState.Frames.Count; i++)
+            {
+                var idx = i;
+                var frame = StudioState.Frames[idx];
+                var isActive = idx == StudioState.ActiveFrameIndex;
+
+                <div @key="frame.Id"
+                     @onclick="() => SelectFrame(idx)"
+                     class="@(isActive ? "border-cyan-400 bg-cyan-400/10 ring-1 ring-cyan-400/50" : "border-[#232838] bg-[#141824] hover:border-slate-500") flex h-full w-24 shrink-0 cursor-pointer flex-col justify-between rounded border p-1 transition-colors">
+                    <div class="flex items-center justify-between font-mono text-[10px]">
+                        <span class="@(isActive ? "text-cyan-300 font-bold" : "text-slate-400")">#@((idx + 1).ToString("D2"))</span>
+                        <span class="text-slate-500">@(frame.DurationMs)ms</span>
+                    </div>
+
+                    <div class="pixcii-checkerboard flex h-14 w-full items-center justify-center overflow-hidden rounded border border-black/30">
+                        @if (!string.IsNullOrEmpty(frame.PixelDataBase64))
+                        {
+                            <img src="@($"data:image/png;base64,{frame.PixelDataBase64}")"
+                                 alt="@($"Frame {idx + 1}")"
+                                 class="pixelated h-full w-full object-contain"
+                                 style="image-rendering: pixelated;" />
+                        }
+                        else
+                        {
+                            <pre class="m-0 overflow-hidden font-mono text-[3px] leading-[1.05] text-cyan-200/90 whitespace-pre">@GetMiniAsciiPreview(frame.AsciiContent)</pre>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public ProjectMode Mode { get; set; }
+    [Parameter] public bool HasCanvasContent { get; set; }
+    [Parameter] public EventCallback OnCaptureCurrentCanvas { get; set; }
+    [Parameter] public EventCallback<AnimationFxPreset> OnGenerateFx { get; set; }
+
+    private CancellationTokenSource? _playbackCts;
+
+    protected override void OnInitialized()
+    {
+        StudioState.OnChange += HandleStateChanged;
+    }
+
+    private async Task HandleAddFrameAsync()
+    {
+        StopPlayback();
+        await OnCaptureCurrentCanvas.InvokeAsync();
+    }
+
+    private async Task TriggerFxAsync(AnimationFxPreset preset)
+    {
+        StopPlayback();
+        await OnGenerateFx.InvokeAsync(preset);
+    }
+
+    private void SelectFrame(int index)
+    {
+        StopPlayback();
+        StudioState.SelectFrame(index);
+    }
+
+    private void HandleDeleteActiveFrame()
+    {
+        StopPlayback();
+        StudioState.DeleteFrame(StudioState.ActiveFrameIndex);
+    }
+
+    private void HandleStepBackward()
+    {
+        StopPlayback();
+        StudioState.StepBackward();
+    }
+
+    private void HandleStepForward()
+    {
+        StopPlayback();
+        StudioState.StepForward();
+    }
+
+    private void TogglePlayback()
+    {
+        if (StudioState.IsPlaying)
+        {
+            StopPlayback();
+            return;
+        }
+
+        if (StudioState.Frames.Count < 2)
+        {
+            return;
+        }
+
+        StudioState.SetPlaying(true);
+        StartPlaybackLoop();
+    }
+
+    private void OnFpsChanged(int fps)
+    {
+        StudioState.SetFps(fps);
+        if (StudioState.IsPlaying)
+        {
+            StartPlaybackLoop();
+        }
+    }
+
+    private void StartPlaybackLoop()
+    {
+        _playbackCts?.Cancel();
+        _playbackCts?.Dispose();
+        _playbackCts = new CancellationTokenSource();
+        _ = RunPlaybackLoopAsync(StudioState.Fps, _playbackCts.Token);
+    }
+
+    private void StopPlayback()
+    {
+        _playbackCts?.Cancel();
+        _playbackCts?.Dispose();
+        _playbackCts = null;
+        if (StudioState.IsPlaying)
+        {
+            StudioState.SetPlaying(false);
+        }
+    }
+
+    private async Task RunPlaybackLoopAsync(int fps, CancellationToken token)
+    {
+        var interval = TimeSpan.FromMilliseconds(1000.0 / Math.Clamp(fps, 1, 24));
+        using var timer = new PeriodicTimer(interval);
+
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                await InvokeAsync(() => StudioState.StepForward());
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on Pause, Stop, FPS change, or Dispose.
+        }
+    }
+
+    private string GetMiniAsciiPreview(string? asciiContent)
+    {
+        var parsed = FrameSerialization.DeserializeAscii(
+            asciiContent,
+            MediaConversionService.BuildAsciiTextAndHtml);
+        return parsed?.PlainText ?? string.Empty;
+    }
+
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        _playbackCts?.Cancel();
+        _playbackCts?.Dispose();
+        StudioState.OnChange -= HandleStateChanged;
+    }
+}

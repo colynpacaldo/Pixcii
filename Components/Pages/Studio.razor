@@ -2,6 +2,7 @@
 @page "/studio"
 @implements IDisposable
 @inject MediaConversionService ConversionService
+@inject AnimationFxService FxService
 @inject ProjectService ProjectService
 @inject StudioStateService StudioState
 @inject ISnackbar Snackbar
@@ -374,11 +375,19 @@
         <div class="pixcii-checkerboard flex flex-1 items-center justify-center overflow-auto p-6">
             @if (_mode == ProjectMode.Ascii && _asciiResult is not null)
             {
-                <div class="rounded-lg border border-[#2a3145] bg-[#0b0d12]/95 p-4 shadow-[0_0_50px_rgba(0,0,0,0.65)]"
+                var onionAscii = GetOnionSkinAscii();
+
+                <div class="relative rounded-lg border border-[#2a3145] bg-[#0b0d12]/95 p-4 shadow-[0_0_50px_rgba(0,0,0,0.65)]"
                      style="@($"transform: scale({_stageZoomPercent / 100.0:F2}); transform-origin: center center;")">
+                    @if (onionAscii is not null)
+                    {
+                        <pre class="pointer-events-none absolute inset-4 m-0 font-mono leading-[1.15] whitespace-pre opacity-30 select-none"
+                             style="@($"font-size: {_asciiFontSizePx}px;")">@((MarkupString)onionAscii.ColoredHtml)</pre>
+                    }
+
                     @if (_quickPaintEnabled)
                     {
-                        <pre class="m-0 font-mono leading-[1.15] select-none whitespace-pre"
+                        <pre class="relative z-10 m-0 font-mono leading-[1.15] select-none whitespace-pre"
                              style="@($"font-size: {_asciiFontSizePx}px;")">@for (var r = 0; r < _asciiResult.Rows; r++)
                         {
                             var row = r;
@@ -395,7 +404,7 @@
                     }
                     else
                     {
-                        <pre class="m-0 font-mono leading-[1.15] select-text whitespace-pre"
+                        <pre class="relative z-10 m-0 font-mono leading-[1.15] select-text whitespace-pre"
                              style="@($"font-size: {_asciiFontSizePx}px;")">@((MarkupString)_asciiResult.ColoredHtml)</pre>
                     }
                 </div>
@@ -405,24 +414,33 @@
                 var baseWidthPx = Math.Clamp(_pixelResult.Width * 10, 280, 520);
                 var scaledWidthPx = (int)Math.Round(baseWidthPx * (_stageZoomPercent / 100.0));
                 var scaledHeightPx = (int)Math.Round(scaledWidthPx * ((double)_pixelResult.Height / _pixelResult.Width));
+                var onionPixelBase64 = GetOnionSkinPixelBase64();
 
                 <div class="pixcii-checkerboard relative overflow-hidden rounded-lg border border-[#2a3145] shadow-[0_0_50px_rgba(0,0,0,0.65)]"
                      style="@($"width: {scaledWidthPx}px; height: {scaledHeightPx}px;")">
+                    @if (!string.IsNullOrEmpty(onionPixelBase64))
+                    {
+                        <img src="@($"data:image/png;base64,{onionPixelBase64}")"
+                             alt="Onion skin previous frame"
+                             class="pixelated pointer-events-none absolute inset-0 block h-full w-full opacity-30 select-none"
+                             style="image-rendering: pixelated;" />
+                    }
+
                     <img src="@_pixelResult.DataUrl"
                          alt="Converted Pixel Art"
-                         class="pixelated block h-full w-full select-none"
+                         class="pixelated relative z-10 block h-full w-full select-none"
                          style="image-rendering: pixelated;" />
 
                     @if (_showPixelGrid)
                     {
-                        <div class="pointer-events-none absolute inset-0 opacity-30"
+                        <div class="pointer-events-none absolute inset-0 z-20 opacity-30"
                              style="@($"background-image: linear-gradient(to right, #94a3b8 1px, transparent 1px), linear-gradient(to bottom, #94a3b8 1px, transparent 1px); background-size: calc(100% / {_pixelResult.Width}) calc(100% / {_pixelResult.Height});")">
                         </div>
                     }
 
                     @if (_quickPaintEnabled)
                     {
-                        <div class="absolute inset-0 grid"
+                        <div class="absolute inset-0 z-30 grid"
                              style="@($"grid-template-columns: repeat({_pixelResult.Width}, minmax(0, 1fr)); grid-template-rows: repeat({_pixelResult.Height}, minmax(0, 1fr));")">
                             @for (var r = 0; r < _pixelResult.Height; r++)
                             {
@@ -448,6 +466,12 @@
                 </div>
             }
         </div>
+
+        @* Bottom Animation Timeline & Loop Player *@
+        <AnimationTimeline Mode="_mode"
+                           HasCanvasContent="HasActiveCanvas"
+                           OnCaptureCurrentCanvas="CaptureCurrentCanvasAsFrame"
+                           OnGenerateFx="GenerateInstantFxAsync" />
     </div>
 </div>
 
@@ -493,11 +517,17 @@
 
     private CancellationTokenSource? _debounceCts;
 
+    private bool HasActiveCanvas =>
+        (_mode == ProjectMode.Ascii && _asciiResult is not null) ||
+        (_mode == ProjectMode.PixelArt && _pixelResult is not null);
+
     private string[] ActivePaletteColors =>
         _palettes.FirstOrDefault(p => p.Id == _selectedPaletteId)?.HexColors ?? ["#0F380F", "#306230", "#8BAC0F", "#9BBC0F"];
 
     protected override async Task OnInitializedAsync()
     {
+        StudioState.OnFrameSelected += HandleFrameSelected;
+
         _palettes = await ProjectService.GetPalettesAsync();
         if (_palettes.Count > 0)
         {
@@ -721,6 +751,11 @@
         _asciiResult.Grid[row, col] = new AsciiCell(_paintGlyph, _paintHexColor);
         var (plainText, coloredHtml) = MediaConversionService.BuildAsciiTextAndHtml(_asciiResult.Grid, _asciiColorMode);
         _asciiResult = _asciiResult with { PlainText = plainText, ColoredHtml = coloredHtml };
+
+        if (StudioState.ActiveFrame is not null)
+        {
+            StudioState.UpdateActiveFrameContent(FrameSerialization.SerializeAscii(_asciiResult), null);
+        }
     }
 
     private void PaintPixelCell(int row, int col)
@@ -732,6 +767,106 @@
 
         _pixelResult.HexGrid[row, col] = _paintEraser ? string.Empty : _paintHexColor;
         _pixelResult = MediaConversionService.RenderHexGridToPixelArt(_pixelResult.HexGrid);
+
+        if (StudioState.ActiveFrame is not null)
+        {
+            StudioState.UpdateActiveFrameContent(
+                FrameSerialization.SerializePixelGrid(_pixelResult),
+                _pixelResult.Base64Png);
+        }
+    }
+
+    private void CaptureCurrentCanvasAsFrame()
+    {
+        var durationMs = Math.Max(40, 1000 / StudioState.Fps);
+
+        if (_mode == ProjectMode.Ascii && _asciiResult is not null)
+        {
+            var frame = FrameSerialization.ToArtFrame(_asciiResult, StudioState.Frames.Count, durationMs);
+            StudioState.AddFrame(frame);
+            Snackbar.Add($"Added ASCII frame #{StudioState.Frames.Count}.", Severity.Success);
+        }
+        else if (_mode == ProjectMode.PixelArt && _pixelResult is not null)
+        {
+            var frame = FrameSerialization.ToArtFrame(_pixelResult, StudioState.Frames.Count, durationMs);
+            StudioState.AddFrame(frame);
+            Snackbar.Add($"Added Pixel frame #{StudioState.Frames.Count}.", Severity.Success);
+        }
+    }
+
+    private Task GenerateInstantFxAsync(AnimationFxPreset preset)
+    {
+        if (_mode == ProjectMode.Ascii && _asciiResult is not null)
+        {
+            var generated = FxService.GenerateAsciiLoop(_asciiResult, preset, _asciiColorMode, StudioState.Fps);
+            StudioState.ReplaceFrames(generated);
+            Snackbar.Add($"Generated {generated.Count}-frame {preset} ASCII loop!", Severity.Success);
+        }
+        else if (_mode == ProjectMode.PixelArt && _pixelResult is not null)
+        {
+            var generated = FxService.GeneratePixelArtLoop(_pixelResult, preset, ActivePaletteColors, StudioState.Fps);
+            StudioState.ReplaceFrames(generated);
+            Snackbar.Add($"Generated {generated.Count}-frame {preset} Pixel loop!", Severity.Success);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void HandleFrameSelected(int index)
+    {
+        if (index < 0 || index >= StudioState.Frames.Count)
+        {
+            return;
+        }
+
+        var frame = StudioState.Frames[index];
+        _ = InvokeAsync(() =>
+        {
+            if (_mode == ProjectMode.Ascii)
+            {
+                var parsed = FrameSerialization.DeserializeAscii(
+                    frame.AsciiContent,
+                    MediaConversionService.BuildAsciiTextAndHtml,
+                    _asciiColorMode);
+                if (parsed is not null)
+                {
+                    _asciiResult = parsed;
+                }
+            }
+            else
+            {
+                var grid = FrameSerialization.DeserializePixelGrid(frame.AsciiContent);
+                if (grid is not null)
+                {
+                    _pixelResult = MediaConversionService.RenderHexGridToPixelArt(grid);
+                }
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    private AsciiResult? GetOnionSkinAscii()
+    {
+        if (!StudioState.OnionSkinningEnabled || StudioState.IsPlaying || StudioState.PreviousFrame is not { } prev)
+        {
+            return null;
+        }
+
+        return FrameSerialization.DeserializeAscii(
+            prev.AsciiContent,
+            MediaConversionService.BuildAsciiTextAndHtml,
+            _asciiColorMode);
+    }
+
+    private string? GetOnionSkinPixelBase64()
+    {
+        if (!StudioState.OnionSkinningEnabled || StudioState.IsPlaying || StudioState.PreviousFrame is not { } prev)
+        {
+            return null;
+        }
+
+        return prev.PixelDataBase64;
     }
 
     private void SelectPaintColor(string hex)
@@ -796,6 +931,7 @@
 
     public void Dispose()
     {
+        StudioState.OnFrameSelected -= HandleFrameSelected;
         _debounceCts?.Cancel();
         _debounceCts?.Dispose();
     }
