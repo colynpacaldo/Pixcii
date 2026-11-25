@@ -12,10 +12,10 @@ public sealed class StudioStateService
     private readonly List<ArtFrame> _frames = [];
 
     public StudioTool ActiveTool { get; private set; } = StudioTool.Pencil;
-    public CanvasMetadata Metadata { get; private set; } = new();
+    public CanvasMetadata Metadata { get; private set; } = new("Untitled Sprite", 64, 32, 8, CanvasMode.Ascii);
     public string PrimaryColor { get; private set; } = "#22D3EE";
     public char ActiveAsciiGlyph { get; private set; } = '@';
-    public int ZoomPercent { get; private set; } = 1200;
+    public int ZoomPercent { get; private set; } = 100;
     public bool ShowGrid { get; private set; } = true;
 
     // Live Canvas Snapshot (used by Export when timeline is empty)
@@ -72,7 +72,13 @@ public sealed class StudioStateService
 
     public void SetZoom(int zoomPercent)
     {
-        ZoomPercent = Math.Clamp(zoomPercent, 100, 3200);
+        ZoomPercent = Math.Clamp(zoomPercent, 40, 250);
+        NotifyStateChanged();
+    }
+
+    public void SetShowGrid(bool showGrid)
+    {
+        ShowGrid = showGrid;
         NotifyStateChanged();
     }
 
@@ -81,11 +87,39 @@ public sealed class StudioStateService
         CurrentProjectMode = mode;
         CurrentAscii = ascii;
         CurrentPixel = pixel;
+
+        var width = mode == ProjectMode.Ascii
+            ? ascii?.Columns ?? Metadata.Width
+            : pixel?.Width ?? Metadata.Width;
+        var height = mode == ProjectMode.Ascii
+            ? ascii?.Rows ?? Metadata.Height
+            : pixel?.Height ?? Metadata.Height;
+
+        Metadata = Metadata with
+        {
+            Width = width,
+            Height = height,
+            Fps = Fps,
+            Mode = mode == ProjectMode.Ascii ? CanvasMode.Ascii : CanvasMode.Pixel
+        };
+
+        NotifyStateChanged();
     }
 
     public void SetProjectMetadata(string title, int width, int height, int fps, CanvasMode mode)
     {
         Metadata = new CanvasMetadata(title, width, height, Math.Clamp(fps, 1, 24), mode);
+        NotifyStateChanged();
+    }
+
+    public void ResetForNewProject()
+    {
+        _frames.Clear();
+        ActiveFrameIndex = -1;
+        IsPlaying = false;
+        Fps = 8;
+        ZoomPercent = 100;
+        Metadata = new CanvasMetadata("Untitled Sprite", 64, 32, 8, CanvasMode.Ascii);
         NotifyStateChanged();
     }
 

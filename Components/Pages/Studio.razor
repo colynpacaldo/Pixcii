@@ -13,13 +13,14 @@
 
 <PageTitle>Pixcii — Live Studio &amp; Converter</PageTitle>
 
-<div class="flex h-full w-full flex-col overflow-hidden lg:flex-row">
+<div class="flex h-full w-full min-w-0 flex-col overflow-hidden lg:flex-row">
     @* ===================================================================== *@
     @* 1. LEFT INSPECTOR PANEL                                               *@
     @* ===================================================================== *@
     <MudPaper Elevation="0"
               Square="true"
-              Class="flex w-full shrink-0 flex-col gap-4 overflow-y-auto border-b border-[#232838] bg-[#10131c] p-4 lg:h-full lg:w-[360px] lg:border-r lg:border-b-0">
+              Class="w-full shrink-0 overflow-y-auto border-b border-[#232838] bg-[#10131c] lg:h-full lg:w-[360px] lg:border-r lg:border-b-0">
+        <div class="flex flex-col gap-4 p-4">
 
         @* Mode Switcher *@
         <div class="space-y-1.5">
@@ -243,12 +244,13 @@
                            Size="Size.Small" />
             </div>
         }
+        </div>
     </MudPaper>
 
     @* ===================================================================== *@
     @* 2. CENTER CANVAS STAGE                                                *@
     @* ===================================================================== *@
-    <div class="flex flex-1 flex-col overflow-hidden">
+    <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
         @* Top Stage Toolbar *@
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#232838] bg-[#0e1118]/90 px-4 py-2">
             <div class="flex items-center gap-3">
@@ -304,7 +306,8 @@
                 else
                 {
                     <MudSwitch T="bool"
-                               @bind-Value="_showPixelGrid"
+                               Value="StudioState.ShowGrid"
+                               ValueChanged="OnGridToggled"
                                Color="Color.Primary"
                                Label="Grid"
                                Size="Size.Small" />
@@ -313,27 +316,9 @@
                 @* Zoom Controls *@
                 <div class="flex items-center gap-1 rounded border border-[#232838] bg-[#141824] px-1.5 py-0.5 font-mono text-xs">
                     <button type="button" @onclick="() => AdjustZoom(-15)" class="px-1.5 text-slate-300 hover:text-cyan-300 cursor-pointer">-</button>
-                    <button type="button" @onclick="ResetZoom" class="w-11 text-center text-slate-200 hover:text-cyan-300 cursor-pointer">@(_stageZoomPercent)%</button>
+                    <button type="button" @onclick="ResetZoom" class="w-11 text-center text-slate-200 hover:text-cyan-300 cursor-pointer">@(StudioState.ZoomPercent)%</button>
                     <button type="button" @onclick="() => AdjustZoom(15)" class="px-1.5 text-slate-300 hover:text-cyan-300 cursor-pointer">+</button>
                 </div>
-
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Default"
-                           Size="Size.Small"
-                           StartIcon="@Icons.Material.Filled.Save"
-                           Disabled="@(!HasActiveCanvas)"
-                           OnClick="OpenSaveDialogAsync">
-                    Save
-                </MudButton>
-
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Secondary"
-                           Size="Size.Small"
-                           StartIcon="@Icons.Material.Filled.IosShare"
-                           Disabled="@(!HasActiveCanvas)"
-                           OnClick="OpenExportDialogAsync">
-                    Export
-                </MudButton>
             </div>
         </div>
 
@@ -399,7 +384,7 @@
                 var onionAscii = GetOnionSkinAscii();
 
                 <div class="relative rounded-lg border border-[#2a3145] bg-[#0b0d12]/95 p-4 shadow-[0_0_50px_rgba(0,0,0,0.65)]"
-                     style="@($"transform: scale({_stageZoomPercent / 100.0:F2}); transform-origin: center center;")">
+                     style="@($"transform: scale({StudioState.ZoomPercent / 100.0:F2}); transform-origin: center center;")">
                     @if (onionAscii is not null)
                     {
                         <pre class="pointer-events-none absolute inset-4 m-0 font-mono leading-[1.15] whitespace-pre opacity-30 select-none"
@@ -433,7 +418,7 @@
             else if (_mode == ProjectMode.PixelArt && _pixelResult is not null)
             {
                 var baseWidthPx = Math.Clamp(_pixelResult.Width * 10, 280, 520);
-                var scaledWidthPx = (int)Math.Round(baseWidthPx * (_stageZoomPercent / 100.0));
+                var scaledWidthPx = (int)Math.Round(baseWidthPx * (StudioState.ZoomPercent / 100.0));
                 var scaledHeightPx = (int)Math.Round(scaledWidthPx * ((double)_pixelResult.Height / _pixelResult.Width));
                 var onionPixelBase64 = GetOnionSkinPixelBase64();
 
@@ -452,7 +437,7 @@
                          class="pixelated relative z-10 block h-full w-full select-none"
                          style="image-rendering: pixelated;" />
 
-                    @if (_showPixelGrid)
+                    @if (StudioState.ShowGrid)
                     {
                         <div class="pointer-events-none absolute inset-0 z-20 opacity-30"
                              style="@($"background-image: linear-gradient(to right, #94a3b8 1px, transparent 1px), linear-gradient(to bottom, #94a3b8 1px, transparent 1px); background-size: calc(100% / {_pixelResult.Width}) calc(100% / {_pixelResult.Height});")">
@@ -531,9 +516,7 @@
     // Stage viewport & Quick Paint state
     private bool _isConverting;
     private bool _quickPaintEnabled;
-    private bool _showPixelGrid = true;
     private int _asciiFontSizePx = 11;
-    private int _stageZoomPercent = 100;
     private char _paintGlyph = '@';
     private string _paintHexColor = "#22D3EE";
     private bool _paintEraser;
@@ -553,6 +536,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        StudioState.OnChange += HandleStudioStateChanged;
         StudioState.OnFrameSelected += HandleFrameSelected;
         StudioState.RegisterSaveHandler(OpenSaveDialogAsync);
 
@@ -565,6 +549,7 @@
 
         if (!ProjectId.HasValue)
         {
+            StudioState.ResetForNewProject();
             await LoadSampleImageAsync();
         }
     }
@@ -580,7 +565,7 @@
             _loadedProjectId = null;
             _projectTitle = "Untitled Sprite";
             _isPublic = true;
-            StudioState.ReplaceFrames([]);
+            StudioState.ResetForNewProject();
             await LoadSampleImageAsync();
         }
     }
@@ -786,7 +771,6 @@
         finally
         {
             _isConverting = false;
-            StudioState.SetActiveCanvas(_mode, _asciiResult, _pixelResult);
             StateHasChanged();
         }
     }
@@ -937,6 +921,7 @@
                     paletteName,
                     ramp,
                     saveReq.IsPublic);
+                await ProjectService.SaveFramesAsync(saved.Id, framesToSave);
             }
             else
             {
@@ -949,10 +934,9 @@
                     StudioState.Fps,
                     paletteName,
                     ramp,
-                    saveReq.IsPublic);
+                    saveReq.IsPublic,
+                    initialFrames: framesToSave);
             }
-
-            await ProjectService.SaveFramesAsync(saved.Id, framesToSave);
 
             _loadedProjectId = saved.Id;
             _projectTitle = saved.Title;
@@ -1039,18 +1023,6 @@
         }
 
         StudioState.SetActiveCanvas(_mode, _asciiResult, _pixelResult);
-    }
-
-    private Task OpenExportDialogAsync()
-    {
-        StudioState.SetActiveCanvas(_mode, _asciiResult, _pixelResult);
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true
-        };
-        return DialogService.ShowAsync<ExportDialog>("Export Studio Art", options);
     }
 
     private void CaptureCurrentCanvasAsFrame()
@@ -1153,13 +1125,17 @@
         }
     }
 
+    private void OnGridToggled(bool value) => StudioState.SetShowGrid(value);
+
     private void AdjustAsciiFont(int delta)
         => _asciiFontSizePx = Math.Clamp(_asciiFontSizePx + delta, 6, 28);
 
     private void AdjustZoom(int delta)
-        => _stageZoomPercent = Math.Clamp(_stageZoomPercent + delta, 40, 250);
+        => StudioState.SetZoom(StudioState.ZoomPercent + delta);
 
-    private void ResetZoom() => _stageZoomPercent = 100;
+    private void ResetZoom() => StudioState.SetZoom(100);
+
+    private void HandleStudioStateChanged() => InvokeAsync(StateHasChanged);
 
     private async Task CopyAsciiPlainTextAsync()
     {
@@ -1189,6 +1165,7 @@
 
     public void Dispose()
     {
+        StudioState.OnChange -= HandleStudioStateChanged;
         StudioState.OnFrameSelected -= HandleFrameSelected;
         StudioState.RegisterSaveHandler(null);
         _debounceCts?.Cancel();

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Pixcii")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c786b66f95ab0d29d3765d703c170d8b70a20b3b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a8c089ed32bbe901a5c2c60c069c9f71f07ca325")]
 [assembly: System.Reflection.AssemblyProductAttribute("Pixcii")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Pixcii")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

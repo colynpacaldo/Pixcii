@@ -25,16 +25,30 @@ public sealed class ProjectService(IDbContextFactory<AppDbContext> dbFactory)
         string paletteName = "PICO-8",
         string characterRamp = " .:-=+*#%@",
         bool isPublic = false,
+        IEnumerable<ArtFrame>? initialFrames = null,
         CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
 
         var now = DateTime.UtcNow;
         var clampedFps = Math.Clamp(fps, 1, 60);
+        var projectId = Guid.NewGuid();
+
+        var frames = initialFrames?
+            .Select((frame, index) => new ArtFrame
+            {
+                Id = Guid.NewGuid(),
+                StudioProjectId = projectId,
+                OrderIndex = index,
+                AsciiContent = frame.AsciiContent,
+                PixelDataBase64 = frame.PixelDataBase64,
+                DurationMs = frame.DurationMs > 0 ? frame.DurationMs : Math.Max(40, 1000 / clampedFps)
+            })
+            .ToList() ?? [];
 
         var project = new StudioProject
         {
-            Id = Guid.NewGuid(),
+            Id = projectId,
             Title = string.IsNullOrWhiteSpace(title) ? "Untitled Project" : title.Trim(),
             AuthorName = string.IsNullOrWhiteSpace(authorName) ? "Anonymous" : authorName.Trim(),
             Mode = mode,
@@ -46,15 +60,7 @@ public sealed class ProjectService(IDbContextFactory<AppDbContext> dbFactory)
             IsPublic = isPublic,
             CreatedAt = now,
             UpdatedAt = now,
-            ArtFrames =
-            [
-                new ArtFrame
-                {
-                    Id = Guid.NewGuid(),
-                    OrderIndex = 0,
-                    DurationMs = Math.Max(10, 1000 / clampedFps)
-                }
-            ]
+            ArtFrames = frames
         };
 
         db.StudioProjects.Add(project);
@@ -94,7 +100,8 @@ public sealed class ProjectService(IDbContextFactory<AppDbContext> dbFactory)
         var normalizedFrames = frames
             .Select((frame, index) => new ArtFrame
             {
-                Id = frame.Id == Guid.Empty ? Guid.NewGuid() : frame.Id,
+                // Always issue fresh frame IDs on save so frames copied/reused across projects never collide on PK.
+                Id = Guid.NewGuid(),
                 StudioProjectId = projectId,
                 OrderIndex = index,
                 AsciiContent = frame.AsciiContent,

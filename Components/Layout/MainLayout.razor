@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject StudioStateService StudioState
+@inject NavigationManager Navigation
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
@@ -31,13 +32,16 @@
             </div>
         </div>
 
-        <div class="hidden md:flex items-center gap-2 ml-6 rounded border border-[#232838] bg-[#141824] px-2.5 py-1 font-mono text-xs text-slate-300">
-            <span>@StudioState.Metadata.ProjectName</span>
-            <span class="text-slate-600">|</span>
-            <span class="text-cyan-400">@StudioState.Metadata.Width&times;@StudioState.Metadata.Height</span>
-            <span class="text-slate-600">|</span>
-            <span class="text-amber-400">@StudioState.Metadata.Fps FPS</span>
-        </div>
+        @if (!IsGalleryRoute)
+        {
+            <div class="hidden md:flex items-center gap-2 ml-6 rounded border border-[#232838] bg-[#141824] px-2.5 py-1 font-mono text-xs text-slate-300">
+                <span class="max-w-[180px] truncate">@StudioState.Metadata.ProjectName</span>
+                <span class="text-slate-600">|</span>
+                <span class="text-cyan-400">@StudioState.Metadata.Width&times;@StudioState.Metadata.Height</span>
+                <span class="text-slate-600">|</span>
+                <span class="text-amber-400">@StudioState.Metadata.Fps FPS</span>
+            </div>
+        }
 
         <MudSpacer />
 
@@ -59,24 +63,27 @@
             </MudButton>
         </div>
 
-        @* Save & Export Actions *@
-        <div class="flex items-center gap-2">
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Default"
-                       Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.Save"
-                       OnClick="HandleSaveAsync">
-                Save
-            </MudButton>
+        @* Single Save & Export Actions (Studio only) *@
+        @if (!IsGalleryRoute)
+        {
+            <div class="flex items-center gap-2">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Save"
+                           OnClick="HandleSaveAsync">
+                    Save
+                </MudButton>
 
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.IosShare"
-                       OnClick="HandleExportAsync">
-                Export
-            </MudButton>
-        </div>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.IosShare"
+                           OnClick="HandleExportAsync">
+                    Export
+                </MudButton>
+            </div>
+        }
     </MudAppBar>
 
     @* Left Tool Panel *@
@@ -161,22 +168,26 @@
     </MudDrawer>
 
     @* Tailwind-Styled Workspace Area *@
-    <MudMainContent Class="flex h-screen flex-col overflow-hidden">
-        <div class="pixcii-workspace-dots flex flex-1 overflow-hidden">
+    <MudMainContent Class="flex h-screen min-w-0 flex-col overflow-hidden">
+        <div class="pixcii-workspace-dots flex min-w-0 flex-1 overflow-hidden">
             @Body
         </div>
 
         @* Studio Status Bar *@
-        <footer class="flex h-7 shrink-0 items-center justify-between border-t border-[#232838] bg-[#0e1118] px-4 font-mono text-[11px] text-slate-400">
-            <div class="flex items-center gap-4">
-                <span>CANVAS: @StudioState.Metadata.Width&times;@StudioState.Metadata.Height px</span>
-                <span>GRID: @(StudioState.ShowGrid ? "ON" : "OFF")</span>
-            </div>
-            <div class="flex items-center gap-3">
-                <span>ZOOM: @StudioState.ZoomPercent%</span>
-                <span class="text-emerald-400">READY</span>
-            </div>
-        </footer>
+        @if (!IsGalleryRoute)
+        {
+            var sizeUnit = StudioState.CurrentProjectMode == ProjectMode.Ascii ? "chars" : "px";
+            <footer class="flex h-7 shrink-0 items-center justify-between border-t border-[#232838] bg-[#0e1118] px-4 font-mono text-[11px] text-slate-400">
+                <div class="flex items-center gap-4">
+                    <span>CANVAS: @StudioState.Metadata.Width&times;@StudioState.Metadata.Height @sizeUnit</span>
+                    <span>GRID: @(StudioState.ShowGrid ? "ON" : "OFF")</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span>ZOOM: @StudioState.ZoomPercent%</span>
+                    <span class="text-emerald-400">READY</span>
+                </div>
+            </footer>
+        }
     </MudMainContent>
 </MudLayout>
 
@@ -201,9 +212,14 @@
         (StudioTool.Marquee, "Select", Icons.Material.Filled.SelectAll)
     ];
 
+    private bool IsGalleryRoute =>
+        Navigation.ToBaseRelativePath(Navigation.Uri)
+            .StartsWith("gallery", StringComparison.OrdinalIgnoreCase);
+
     protected override void OnInitialized()
     {
         StudioState.OnChange += HandleStateChanged;
+        Navigation.LocationChanged += HandleLocationChanged;
     }
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
@@ -224,10 +240,14 @@
         await DialogService.ShowAsync<ExportDialog>("Export Studio Art", options);
     }
 
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+        => InvokeAsync(StateHasChanged);
+
     private void HandleStateChanged() => InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
         StudioState.OnChange -= HandleStateChanged;
+        Navigation.LocationChanged -= HandleLocationChanged;
     }
 }

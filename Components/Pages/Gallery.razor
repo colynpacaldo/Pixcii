@@ -1,4 +1,6 @@
 @page "/gallery"
+@using System.Diagnostics
+@using System.Globalization
 @implements IDisposable
 @inject ProjectService ProjectService
 @inject NavigationManager Navigation
@@ -6,12 +8,12 @@
 
 <PageTitle>Pixcii — Class Showcase Gallery</PageTitle>
 
-<div class="flex h-full w-full flex-col overflow-hidden">
+<div class="flex h-full w-full min-w-0 flex-col overflow-hidden">
     @* ===================================================================== *@
     @* GALLERY HEADER & FILTER BAR                                           *@
     @* ===================================================================== *@
     <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[#232838] bg-[#10131c] px-6 py-4">
-        <div>
+        <div class="min-w-0">
             <div class="flex items-center gap-2">
                 <MudIcon Icon="@Icons.Material.Filled.Collections" Color="Color.Primary" />
                 <h1 class="m-0 font-mono text-lg font-bold tracking-wider text-slate-100">
@@ -49,17 +51,29 @@
         </div>
     </div>
 
-    @* Filter Chips *@
-    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#232838] bg-[#0e1118] px-6 py-2.5">
+    @* Filter Chips with Visible Selected State *@
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#232838] bg-[#0e1118] px-6 py-3">
         <MudChipSet T="string"
                     SelectedValue="_selectedFilter"
                     SelectedValueChanged="OnFilterChanged"
                     SelectionMode="SelectionMode.SingleSelection"
-                    CheckMark="false">
-            <MudChip Value="@("All")" Text="All Projects" Color="Color.Primary" Variant="Variant.Outlined" />
-            <MudChip Value="@("Ascii")" Text="ASCII Only" Color="Color.Info" Variant="Variant.Outlined" />
-            <MudChip Value="@("PixelArt")" Text="Pixel Art Only" Color="Color.Secondary" Variant="Variant.Outlined" />
-            <MudChip Value="@("Popular")" Text="Most Popular" Color="Color.Tertiary" Variant="Variant.Outlined" />
+                    CheckMark="true">
+            <MudChip Value="@("All")"
+                     Text="All Projects"
+                     Color="Color.Primary"
+                     Variant="@(_selectedFilter == "All" ? Variant.Filled : Variant.Outlined)" />
+            <MudChip Value="@("Ascii")"
+                     Text="ASCII Only"
+                     Color="Color.Info"
+                     Variant="@(_selectedFilter == "Ascii" ? Variant.Filled : Variant.Outlined)" />
+            <MudChip Value="@("PixelArt")"
+                     Text="Pixel Art Only"
+                     Color="Color.Secondary"
+                     Variant="@(_selectedFilter == "PixelArt" ? Variant.Filled : Variant.Outlined)" />
+            <MudChip Value="@("Popular")"
+                     Text="Most Popular"
+                     Color="Color.Tertiary"
+                     Variant="@(_selectedFilter == "Popular" ? Variant.Filled : Variant.Outlined)" />
         </MudChipSet>
 
         <span class="font-mono text-xs text-slate-400">
@@ -68,9 +82,9 @@
     </div>
 
     @* ===================================================================== *@
-    @* RESPONSIVE CARD GRID                                                  *@
+    @* RESPONSIVE CARD GRID (NO HORIZONTAL OVERFLOW)                         *@
     @* ===================================================================== *@
-    <div class="pixcii-workspace-dots flex-1 overflow-y-auto p-6">
+    <div class="pixcii-workspace-dots min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-6">
         @if (_isLoading)
         {
             <div class="flex h-64 items-center justify-center">
@@ -92,42 +106,45 @@
         }
         else
         {
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div class="grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 @foreach (var project in _projects)
                 {
-                    var orderedFrames = project.ArtFrames.OrderBy(f => f.OrderIndex).ToList();
+                    var orderedFrames = GetOrderedFrames(project);
                     var activeFrame = orderedFrames.Count > 0
-                        ? orderedFrames[_loopTick % orderedFrames.Count]
+                        ? orderedFrames[GetCurrentFrameIndex(project, orderedFrames.Count)]
                         : null;
 
                     <MudCard @key="project.Id"
                              Elevation="0"
-                             Class="flex flex-col overflow-hidden rounded-lg border border-[#232838] bg-[#141824]">
+                             Class="flex min-w-0 flex-col overflow-hidden rounded-lg border border-[#232838] bg-[#141824]">
 
-                        @* Live Looping Mini-Preview *@
-                        <div class="pixcii-checkerboard relative flex h-48 w-full items-center justify-center overflow-hidden border-b border-[#232838] p-3">
+                        @* Live Looping Mini-Preview (scaled to fit card cleanly without cropping) *@
+                        <div class="pixcii-checkerboard relative flex h-48 w-full min-w-0 items-center justify-center overflow-hidden border-b border-[#232838] p-3">
                             @if (activeFrame is not null && project.Mode == ProjectMode.PixelArt && !string.IsNullOrEmpty(activeFrame.PixelDataBase64))
                             {
                                 <img src="@($"data:image/png;base64,{activeFrame.PixelDataBase64}")"
                                      alt="@project.Title"
-                                     class="pixelated max-h-40 max-w-full object-contain"
+                                     class="pixelated max-h-full max-w-full object-contain"
                                      style="image-rendering: pixelated;" />
                             }
-                            else if (activeFrame is not null && project.Mode == ProjectMode.Ascii)
+                            else if (activeFrame is not null && project.Mode == ProjectMode.Ascii && GetCachedAsciiPreview(activeFrame) is { } ascii)
                             {
-                                var ascii = GetCachedAsciiPreview(activeFrame);
-                                if (ascii is not null)
-                                {
-                                    <pre class="m-0 overflow-hidden font-mono text-[5px] leading-[1.08] whitespace-pre select-none">@((MarkupString)ascii.ColoredHtml)</pre>
-                                }
+                                var scale = GetAsciiPreviewScale(ascii.Columns, ascii.Rows);
+                                <div class="flex h-full w-full items-center justify-center overflow-hidden rounded bg-[#090b10]/90">
+                                    <pre class="m-0 font-mono leading-[1.1] whitespace-pre select-none"
+                                         style="@($"font-size: 10px; transform: scale({scale.ToString("0.###", CultureInfo.InvariantCulture)}); transform-origin: center center;")">@((MarkupString)ascii.ColoredHtml)</pre>
+                                </div>
                             }
                             else
                             {
-                                <span class="font-mono text-xs text-slate-500">Empty Frame</span>
+                                @* Visible fallback preview when legacy DB rows have empty frame content *@
+                                <div class="flex h-full w-full items-center justify-center overflow-hidden rounded bg-[#090b10]/90 p-3">
+                                    <pre class="m-0 text-center font-mono text-[10px] leading-tight text-cyan-300 whitespace-pre select-none">@BuildFallbackAsciiBanner(project)</pre>
+                                </div>
                             }
 
                             @* Top-Right Mode & Frame Count Badges *@
-                            <div class="absolute top-2 right-2 flex items-center gap-1.5">
+                            <div class="absolute top-2 right-2 z-10 flex items-center gap-1.5">
                                 <span class="@(project.Mode == ProjectMode.Ascii ? "border-cyan-400/40 bg-cyan-400/15 text-cyan-300" : "border-amber-400/40 bg-amber-400/15 text-amber-300") rounded border px-1.5 py-0.5 font-mono text-[10px] font-semibold backdrop-blur-sm">
                                     @(project.Mode == ProjectMode.Ascii ? "ASCII" : "PIXEL")
                                 </span>
@@ -138,21 +155,21 @@
 
                             @if (project.RemixedFromId.HasValue)
                             {
-                                <span class="absolute top-2 left-2 rounded border border-purple-400/40 bg-purple-400/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-purple-300">
+                                <span class="absolute top-2 left-2 z-10 rounded border border-purple-400/40 bg-purple-400/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-purple-300">
                                     REMIX
                                 </span>
                             }
                         </div>
 
                         @* Card Metadata *@
-                        <div class="flex flex-1 flex-col justify-between gap-3 p-3.5">
-                            <div>
+                        <div class="flex flex-1 flex-col justify-between gap-3 p-4">
+                            <div class="min-w-0">
                                 <div class="truncate font-mono text-sm font-bold text-slate-100" title="@project.Title">
                                     @project.Title
                                 </div>
-                                <div class="mt-0.5 flex items-center justify-between font-mono text-[11px] text-slate-400">
-                                    <span>by <span class="text-slate-200">@project.AuthorName</span></span>
-                                    <span>@project.UpdatedAt.ToLocalTime().ToString("MMM d, HH:mm")</span>
+                                <div class="mt-0.5 flex items-center justify-between gap-2 font-mono text-[11px] text-slate-400">
+                                    <span class="truncate">by <span class="text-slate-200">@project.AuthorName</span></span>
+                                    <span class="shrink-0">@project.UpdatedAt.ToLocalTime().ToString("MMM d, HH:mm")</span>
                                 </div>
                             </div>
 
@@ -198,6 +215,8 @@
     ];
 
     private IReadOnlyList<StudioProject> _projects = [];
+    private Dictionary<Guid, List<ArtFrame>> _orderedFramesByProject = [];
+    private Dictionary<Guid, int> _lastFrameIndices = [];
     private Dictionary<Guid, Dictionary<string, int>> _reactionCounts = [];
     private readonly Dictionary<Guid, AsciiResult?> _asciiPreviewCache = [];
 
@@ -206,7 +225,7 @@
     private bool _isLoading = true;
     private Guid? _forkingProjectId;
 
-    private int _loopTick;
+    private readonly Stopwatch _clock = Stopwatch.StartNew();
     private CancellationTokenSource? _previewLoopCts;
 
     protected override async Task OnInitializedAsync()
@@ -243,6 +262,11 @@
                 mostPopular: mostPopular);
 
             _asciiPreviewCache.Clear();
+            _orderedFramesByProject = _projects.ToDictionary(
+                p => p.Id,
+                p => p.ArtFrames.OrderBy(f => f.OrderIndex).ToList());
+            _lastFrameIndices = _projects.ToDictionary(p => p.Id, _ => 0);
+
             _reactionCounts = _projects.ToDictionary(
                 p => p.Id,
                 p => p.Reactions
@@ -258,6 +282,20 @@
             _isLoading = false;
             StateHasChanged();
         }
+    }
+
+    private List<ArtFrame> GetOrderedFrames(StudioProject project) =>
+        _orderedFramesByProject.TryGetValue(project.Id, out var list) ? list : [];
+
+    private int GetCurrentFrameIndex(StudioProject project, int frameCount)
+    {
+        if (frameCount <= 1)
+        {
+            return 0;
+        }
+
+        var frameDurationMs = Math.Max(40.0, 1000.0 / Math.Clamp(project.Fps, 1, 24));
+        return (int)(_clock.ElapsedMilliseconds / frameDurationMs) % frameCount;
     }
 
     private int GetReactionCount(Guid projectId, string reactionType)
@@ -315,6 +353,20 @@
         return parsed;
     }
 
+    private static double GetAsciiPreviewScale(int columns, int rows)
+    {
+        var naturalWidth = Math.Max(1, columns) * 6.0;
+        var naturalHeight = Math.Max(1, rows) * 11.0;
+        return Math.Clamp(Math.Min(230.0 / naturalWidth, 152.0 / naturalHeight), 0.12, 1.15);
+    }
+
+    private static string BuildFallbackAsciiBanner(StudioProject project)
+    {
+        var label = project.Title.Length > 18 ? project.Title[..18] : project.Title;
+        var border = new string('=', Math.Max(12, label.Length + 4));
+        return $"+{border}+\n|  {label}  |\n|  {project.Width}x{project.Height} {project.Mode.ToString().ToUpperInvariant()}  |\n+{border}+";
+    }
+
     private void StartPreviewLoop()
     {
         _previewLoopCts?.Cancel();
@@ -325,14 +377,27 @@
 
     private async Task RunPreviewLoopAsync(CancellationToken token)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(160));
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(40));
         try
         {
             while (await timer.WaitForNextTickAsync(token))
             {
-                if (_projects.Count > 0)
+                var changed = false;
+                foreach (var project in _projects)
                 {
-                    _loopTick++;
+                    var count = GetOrderedFrames(project).Count;
+                    if (count <= 1) continue;
+
+                    var nextIdx = GetCurrentFrameIndex(project, count);
+                    if (!_lastFrameIndices.TryGetValue(project.Id, out var prevIdx) || prevIdx != nextIdx)
+                    {
+                        _lastFrameIndices[project.Id] = nextIdx;
+                        changed = true;
+                    }
+                }
+
+                if (changed)
+                {
                     await InvokeAsync(StateHasChanged);
                 }
             }
