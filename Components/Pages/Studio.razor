@@ -5,6 +5,7 @@
 @inject AnimationFxService FxService
 @inject ProjectService ProjectService
 @inject StudioStateService StudioState
+@inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 
@@ -313,6 +314,15 @@
                     <button type="button" @onclick="ResetZoom" class="w-11 text-center text-slate-200 hover:text-cyan-300 cursor-pointer">@(_stageZoomPercent)%</button>
                     <button type="button" @onclick="() => AdjustZoom(15)" class="px-1.5 text-slate-300 hover:text-cyan-300 cursor-pointer">+</button>
                 </div>
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Secondary"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.IosShare"
+                           Disabled="@(!HasActiveCanvas)"
+                           OnClick="OpenExportDialogAsync">
+                    Export
+                </MudButton>
             </div>
         </div>
 
@@ -703,6 +713,7 @@
                 if (!token.IsCancellationRequested)
                 {
                     _asciiResult = result;
+                    StudioState.SetActiveCanvas(_mode, _asciiResult, _pixelResult);
                 }
             }
             else
@@ -723,6 +734,7 @@
                 if (!token.IsCancellationRequested)
                 {
                     _pixelResult = result;
+                    StudioState.SetActiveCanvas(_mode, _asciiResult, _pixelResult);
                 }
             }
         }
@@ -737,6 +749,7 @@
         finally
         {
             _isConverting = false;
+            StudioState.SetActiveCanvas(_mode, _asciiResult, _pixelResult);
             StateHasChanged();
         }
     }
@@ -751,6 +764,7 @@
         _asciiResult.Grid[row, col] = new AsciiCell(_paintGlyph, _paintHexColor);
         var (plainText, coloredHtml) = MediaConversionService.BuildAsciiTextAndHtml(_asciiResult.Grid, _asciiColorMode);
         _asciiResult = _asciiResult with { PlainText = plainText, ColoredHtml = coloredHtml };
+        StudioState.SetActiveCanvas(_mode, _asciiResult, _pixelResult);
 
         if (StudioState.ActiveFrame is not null)
         {
@@ -767,6 +781,7 @@
 
         _pixelResult.HexGrid[row, col] = _paintEraser ? string.Empty : _paintHexColor;
         _pixelResult = MediaConversionService.RenderHexGridToPixelArt(_pixelResult.HexGrid);
+        StudioState.SetActiveCanvas(_mode, _asciiResult, _pixelResult);
 
         if (StudioState.ActiveFrame is not null)
         {
@@ -774,6 +789,18 @@
                 FrameSerialization.SerializePixelGrid(_pixelResult),
                 _pixelResult.Base64Png);
         }
+    }
+
+    private Task OpenExportDialogAsync()
+    {
+        StudioState.SetActiveCanvas(_mode, _asciiResult, _pixelResult);
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+        return DialogService.ShowAsync<ExportDialog>("Export Studio Art", options);
     }
 
     private void CaptureCurrentCanvasAsFrame()
@@ -842,6 +869,7 @@
                 }
             }
 
+            StudioState.SetActiveCanvas(_mode, _asciiResult, _pixelResult);
             StateHasChanged();
         });
     }

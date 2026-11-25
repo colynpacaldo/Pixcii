@@ -17,6 +17,11 @@ public sealed class StudioStateService
     public int ZoomPercent { get; private set; } = 1200;
     public bool ShowGrid { get; private set; } = true;
 
+    // Live Canvas Snapshot (used by Export when timeline is empty)
+    public ProjectMode CurrentProjectMode { get; private set; } = ProjectMode.Ascii;
+    public AsciiResult? CurrentAscii { get; private set; }
+    public PixelArtResult? CurrentPixel { get; private set; }
+
     // Animation Timeline State
     public IReadOnlyList<ArtFrame> Frames => _frames;
     public int ActiveFrameIndex { get; private set; } = -1;
@@ -68,6 +73,13 @@ public sealed class StudioStateService
     {
         ZoomPercent = Math.Clamp(zoomPercent, 100, 3200);
         NotifyStateChanged();
+    }
+
+    public void SetActiveCanvas(ProjectMode mode, AsciiResult? ascii, PixelArtResult? pixel)
+    {
+        CurrentProjectMode = mode;
+        CurrentAscii = ascii;
+        CurrentPixel = pixel;
     }
 
     // -------------------------------------------------------------------------

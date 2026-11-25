@@ -1,0 +1,364 @@
+@inject ExportService ExportService
+@inject StudioStateService StudioState
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <div class="flex items-center gap-2 font-mono">
+            <MudIcon Icon="@Icons.Material.Filled.IosShare" Color="Color.Primary" />
+            <span class="font-bold tracking-wider">EXPORT STUDIO ART</span>
+            <span class="rounded border border-[#232838] bg-[#141824] px-2 py-0.5 text-xs text-cyan-300">
+                @_frames.Count @(_frames.Count == 1 ? "frame" : "frames") &middot; @_fps FPS
+            </span>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        @if (_frames.Count == 0)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                No canvas content or animation frames are ready to export yet.
+            </MudAlert>
+        }
+        else
+        {
+            <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" TabPanelsClass="pt-4">
+                @* ========================================================= *@
+                @* 1. ANIMATED GIF (.gif)                                    *@
+                @* ========================================================= *@
+                <MudTabPanel Text="Animated GIF" Icon="@Icons.Material.Filled.Gif">
+                    <div class="space-y-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div class="w-44">
+                                <MudSelect T="int"
+                                           Label="Pixel Scale"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense"
+                                           Value="_gifScale"
+                                           ValueChanged="OnGifScaleChanged">
+                                    <MudSelectItem Value="1">1&times; (Native)</MudSelectItem>
+                                    <MudSelectItem Value="2">2&times;</MudSelectItem>
+                                    <MudSelectItem Value="4">4&times; (Recommended)</MudSelectItem>
+                                    <MudSelectItem Value="8">8&times;</MudSelectItem>
+                                </MudSelect>
+                            </div>
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Download"
+                                       Disabled="@(_gifBytes is null || _isBuildingGif)"
+                                       OnClick="DownloadGifAsync">
+                                Download .gif
+                            </MudButton>
+                        </div>
+
+                        <div class="pixcii-checkerboard flex h-60 items-center justify-center overflow-hidden rounded-lg border border-[#232838] p-3">
+                            @if (_isBuildingGif)
+                            {
+                                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                            }
+                            else if (!string.IsNullOrEmpty(_gifPreviewUrl))
+                            {
+                                <img src="@_gifPreviewUrl"
+                                     alt="Animated GIF preview"
+                                     class="pixelated max-h-52 max-w-full object-contain"
+                                     style="image-rendering: pixelated;" />
+                            }
+                        </div>
+                    </div>
+                </MudTabPanel>
+
+                @* ========================================================= *@
+                @* 2. GAME ENGINE SPRITESHEET (.png)                         *@
+                @* ========================================================= *@
+                <MudTabPanel Text="Spritesheet PNG" Icon="@Icons.Material.Filled.ViewWeek">
+                    <div class="space-y-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <div class="w-40">
+                                    <MudSelect T="int"
+                                               Label="Pixel Scale"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Value="_sheetScale"
+                                               ValueChanged="OnSheetScaleChanged">
+                                        <MudSelectItem Value="1">1&times; (Game Engine)</MudSelectItem>
+                                        <MudSelectItem Value="2">2&times;</MudSelectItem>
+                                        <MudSelectItem Value="4">4&times;</MudSelectItem>
+                                        <MudSelectItem Value="8">8&times;</MudSelectItem>
+                                    </MudSelect>
+                                </div>
+
+                                <MudSwitch T="bool"
+                                           Value="_sheetTransparent"
+                                           ValueChanged="OnSheetTransparencyChanged"
+                                           Color="Color.Primary"
+                                           Label="Transparent BG"
+                                           Size="Size.Small" />
+                            </div>
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Download"
+                                       Disabled="@(_sheetResult is null || _isBuildingSheet)"
+                                       OnClick="DownloadSpritesheetAsync">
+                                Download .png
+                            </MudButton>
+                        </div>
+
+                        @if (_sheetResult is not null)
+                        {
+                            <div class="flex flex-wrap items-center gap-3 rounded border border-[#232838] bg-[#141824] px-3 py-2 font-mono text-xs text-slate-300">
+                                <span>Frame Size: <strong class="text-cyan-300">@_sheetResult.FrameWidth &times; @_sheetResult.FrameHeight px</strong></span>
+                                <span class="text-slate-600">|</span>
+                                <span>Frames: <strong class="text-amber-300">@_sheetResult.FrameCount</strong></span>
+                                <span class="text-slate-600">|</span>
+                                <span>Sheet Size: <strong class="text-emerald-300">@_sheetResult.SheetWidth &times; @_sheetResult.SheetHeight px</strong></span>
+                            </div>
+                        }
+
+                        <div class="pixcii-checkerboard flex h-52 items-center justify-center overflow-x-auto rounded-lg border border-[#232838] p-3">
+                            @if (_isBuildingSheet)
+                            {
+                                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                            }
+                            else if (!string.IsNullOrEmpty(_sheetPreviewUrl))
+                            {
+                                <img src="@_sheetPreviewUrl"
+                                     alt="Spritesheet preview"
+                                     class="pixelated max-h-44 object-contain"
+                                     style="image-rendering: pixelated;" />
+                            }
+                        </div>
+                    </div>
+                </MudTabPanel>
+
+                @* ========================================================= *@
+                @* 3. GAME-DEV CODE SNIPPETS & TEXT / HTML                   *@
+                @* ========================================================= *@
+                <MudTabPanel Text="Code & Text" Icon="@Icons.Material.Filled.Code">
+                    <div class="space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <MudToggleGroup T="string"
+                                            Value="_codeFormat"
+                                            ValueChanged="OnCodeFormatChanged"
+                                            Color="Color.Secondary"
+                                            CheckMark="false"
+                                            Outlined="true"
+                                            SelectionMode="SelectionMode.SingleSelection"
+                                            Size="Size.Small">
+                                <MudToggleItem Value="@("csharp")" Text="C# Console" />
+                                <MudToggleItem Value="@("json")" Text="JSON Frames" />
+                                <MudToggleItem Value="@("txt")" Text="Raw .txt" />
+                                <MudToggleItem Value="@("html")" Text="HTML Page" />
+                            </MudToggleGroup>
+
+                            <div class="flex items-center gap-2">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Default"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.ContentCopy"
+                                           OnClick="CopySnippetAsync">
+                                    Copy
+                                </MudButton>
+
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.Download"
+                                           OnClick="DownloadSnippetAsync">
+                                    Download
+                                </MudButton>
+                            </div>
+                        </div>
+
+                        <pre class="max-h-64 overflow-auto rounded-lg border border-[#232838] bg-[#0b0d12] p-3 font-mono text-xs leading-relaxed text-cyan-200 whitespace-pre">@_generatedCodeText</pre>
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private IReadOnlyList<ArtFrame> _frames = [];
+    private ProjectMode _mode;
+    private int _fps = 8;
+    private string _baseFileName = "pixcii-art";
+
+    // GIF state
+    private int _gifScale = 4;
+    private bool _isBuildingGif;
+    private byte[]? _gifBytes;
+    private string? _gifPreviewUrl;
+
+    // Spritesheet state
+    private int _sheetScale = 1;
+    private bool _sheetTransparent = true;
+    private bool _isBuildingSheet;
+    private SpritesheetExportResult? _sheetResult;
+    private string? _sheetPreviewUrl;
+
+    // Code/Text state
+    private string _codeFormat = "csharp";
+    private string _generatedCodeText = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _mode = StudioState.CurrentProjectMode;
+        _fps = StudioState.Fps;
+        _baseFileName = Path.GetFileNameWithoutExtension(StudioState.Metadata.ProjectName);
+        if (string.IsNullOrWhiteSpace(_baseFileName))
+        {
+            _baseFileName = "pixcii-art";
+        }
+
+        if (StudioState.Frames.Count > 0)
+        {
+            _frames = StudioState.Frames;
+        }
+        else if (_mode == ProjectMode.Ascii && StudioState.CurrentAscii is not null)
+        {
+            _frames = [FrameSerialization.ToArtFrame(StudioState.CurrentAscii, 0, Math.Max(40, 1000 / _fps))];
+        }
+        else if (_mode == ProjectMode.PixelArt && StudioState.CurrentPixel is not null)
+        {
+            _frames = [FrameSerialization.ToArtFrame(StudioState.CurrentPixel, 0, Math.Max(40, 1000 / _fps))];
+        }
+
+        if (_frames.Count > 0)
+        {
+            RefreshCodeSnippet();
+            await Task.WhenAll(RebuildGifAsync(), RebuildSpritesheetAsync());
+        }
+    }
+
+    private Task OnGifScaleChanged(int scale)
+    {
+        _gifScale = scale;
+        return RebuildGifAsync();
+    }
+
+    private Task OnSheetScaleChanged(int scale)
+    {
+        _sheetScale = scale;
+        return RebuildSpritesheetAsync();
+    }
+
+    private Task OnSheetTransparencyChanged(bool transparent)
+    {
+        _sheetTransparent = transparent;
+        return RebuildSpritesheetAsync();
+    }
+
+    private void OnCodeFormatChanged(string format)
+    {
+        _codeFormat = format;
+        RefreshCodeSnippet();
+    }
+
+    private async Task RebuildGifAsync()
+    {
+        _isBuildingGif = true;
+        StateHasChanged();
+
+        try
+        {
+            var bytes = await Task.Run(() =>
+                ExportService.ExportAnimatedGifAsync(_frames, _mode, _fps, _gifScale));
+            _gifBytes = bytes;
+            _gifPreviewUrl = $"data:image/gif;base64,{Convert.ToBase64String(bytes)}";
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"GIF export error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isBuildingGif = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RebuildSpritesheetAsync()
+    {
+        _isBuildingSheet = true;
+        StateHasChanged();
+
+        try
+        {
+            var bgHex = _sheetTransparent ? null : "#0B0D12";
+            var result = await Task.Run(() =>
+                ExportService.ExportSpritesheetAsync(_frames, _mode, _sheetScale, bgHex));
+            _sheetResult = result;
+            _sheetPreviewUrl = $"data:image/png;base64,{Convert.ToBase64String(result.PngBytes)}";
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Spritesheet export error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isBuildingSheet = false;
+            StateHasChanged();
+        }
+    }
+
+    private void RefreshCodeSnippet()
+    {
+        _generatedCodeText = _codeFormat switch
+        {
+            "csharp" => ExportService.GenerateCSharpConsoleSnippet(_frames, _fps, _baseFileName),
+            "json" => ExportService.GenerateJsonFrameData(_frames, _mode, _fps, _baseFileName),
+            "txt" => ExportService.GenerateRawAsciiText(_frames),
+            "html" => ExportService.GenerateStandaloneAsciiHtml(_frames, _fps, _baseFileName),
+            _ => string.Empty
+        };
+    }
+
+    private async Task DownloadGifAsync()
+    {
+        if (_gifBytes is null) return;
+        await JS.InvokeVoidAsync("pixciiDownload.saveBytes", $"{_baseFileName}.gif", "image/gif", _gifBytes);
+        Snackbar.Add($"Downloaded {_baseFileName}.gif", Severity.Success);
+    }
+
+    private async Task DownloadSpritesheetAsync()
+    {
+        if (_sheetResult is null) return;
+        await JS.InvokeVoidAsync("pixciiDownload.saveBytes", $"{_baseFileName}-sheet.png", "image/png", _sheetResult.PngBytes);
+        Snackbar.Add($"Downloaded {_baseFileName}-sheet.png", Severity.Success);
+    }
+
+    private async Task CopySnippetAsync()
+    {
+        if (string.IsNullOrEmpty(_generatedCodeText)) return;
+        await JS.InvokeVoidAsync("pixciiDownload.copyText", _generatedCodeText);
+        Snackbar.Add("Copied export snippet to clipboard.", Severity.Success);
+    }
+
+    private async Task DownloadSnippetAsync()
+    {
+        if (string.IsNullOrEmpty(_generatedCodeText)) return;
+        var (ext, mime) = _codeFormat switch
+        {
+            "csharp" => ("cs", "text/plain;charset=utf-8"),
+            "json" => ("json", "application/json;charset=utf-8"),
+            "html" => ("html", "text/html;charset=utf-8"),
+            _ => ("txt", "text/plain;charset=utf-8")
+        };
+
+        await JS.InvokeVoidAsync("pixciiDownload.saveText", $"{_baseFileName}.{ext}", mime, _generatedCodeText);
+        Snackbar.Add($"Downloaded {_baseFileName}.{ext}", Severity.Success);
+    }
+
+    private void CloseDialog() => MudDialog.Close();
+}

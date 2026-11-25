@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject StudioStateService StudioState
+@inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
 <MudThemeProvider IsDarkMode="true" Theme="StudioTheme.RetroDark" />
@@ -67,7 +68,7 @@
                        Color="Color.Primary"
                        Size="Size.Small"
                        StartIcon="@Icons.Material.Filled.IosShare"
-                       OnClick="HandleExportPlaceholder">
+                       OnClick="HandleExportAsync">
                 Export
             </MudButton>
         </div>
@@ -207,9 +208,15 @@
         Snackbar.Add($"Saved {StudioState.Metadata.ProjectName} (placeholder).", Severity.Success);
     }
 
-    private void HandleExportPlaceholder()
+    private async Task HandleExportAsync()
     {
-        Snackbar.Add("Export dialog (GIF / Sprite Sheet / ANSI-ASCII) coming in next step.", Severity.Info);
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+        await DialogService.ShowAsync<ExportDialog>("Export Studio Art", options);
     }
 
     private void HandleStateChanged() => InvokeAsync(StateHasChanged);

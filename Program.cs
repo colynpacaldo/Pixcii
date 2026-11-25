@@ -34,11 +34,12 @@ builder.Services.AddDbContextFactory<AppDbContext>(options =>
     }
 });
 
-// Register Pixcii studio state, media engine, FX & data services.
+// Register Pixcii studio state, media engine, FX, export & data services.
 builder.Services.AddScoped<StudioStateService>();
 builder.Services.AddScoped<ProjectService>();
 builder.Services.AddSingleton<MediaConversionService>();
 builder.Services.AddSingleton<AnimationFxService>();
+builder.Services.AddSingleton<ExportService>();
 
 var app = builder.Build();
 
