@@ -1,0 +1,802 @@
+@page "/"
+@page "/studio"
+@implements IDisposable
+@inject MediaConversionService ConversionService
+@inject ProjectService ProjectService
+@inject StudioStateService StudioState
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<PageTitle>Pixcii — Live Studio &amp; Converter</PageTitle>
+
+<div class="flex h-full w-full flex-col overflow-hidden lg:flex-row">
+    @* ===================================================================== *@
+    @* 1. LEFT INSPECTOR PANEL                                               *@
+    @* ===================================================================== *@
+    <MudPaper Elevation="0"
+              Square="true"
+              Class="flex w-full shrink-0 flex-col gap-4 overflow-y-auto border-b border-[#232838] bg-[#10131c] p-4 lg:h-full lg:w-[360px] lg:border-r lg:border-b-0">
+
+        @* Mode Switcher *@
+        <div class="space-y-1.5">
+            <div class="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                Studio Mode
+            </div>
+            <MudToggleGroup T="ProjectMode"
+                            Value="_mode"
+                            ValueChanged="OnModeChanged"
+                            Color="Color.Primary"
+                            CheckMark="false"
+                            FixedContent="true"
+                            Outlined="true"
+                            SelectionMode="SelectionMode.SingleSelection"
+                            Class="w-full">
+                <MudToggleItem Value="ProjectMode.Ascii" Text="ASCII Mode" />
+                <MudToggleItem Value="ProjectMode.PixelArt" Text="Pixel Art Mode" />
+            </MudToggleGroup>
+        </div>
+
+        @* Image Upload (PNG / JPG / WebP, max 5MB) *@
+        <div class="space-y-2">
+            <div class="flex items-center justify-between">
+                <span class="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                    Source Media
+                </span>
+                <span class="font-mono text-[10px] text-slate-500">MAX 5 MB</span>
+            </div>
+
+            <MudFileUpload T="IBrowserFile"
+                           Accept=".png,.jpg,.jpeg,.webp"
+                           MaximumFileCount="1"
+                           FilesChanged="OnFileUploadedAsync">
+                <CustomContent Context="fileUpload">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               StartIcon="@Icons.Material.Filled.UploadFile"
+                               OnClick="@fileUpload.OpenFilePickerAsync">
+                        Upload PNG / JPG / WebP
+                    </MudButton>
+                </CustomContent>
+            </MudFileUpload>
+
+            <div class="flex items-center justify-between gap-2">
+                <span class="truncate font-mono text-[11px] text-slate-400" title="@_sourceFileName">
+                    @_sourceFileName
+                </span>
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Secondary"
+                           Size="Size.Small"
+                           OnClick="LoadSampleImageAsync">
+                    Sample Art
+                </MudButton>
+            </div>
+        </div>
+
+        <MudDivider />
+
+        @* Live Sliders *@
+        <div class="space-y-3">
+            <div class="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                Conversion Tuning
+            </div>
+
+            @if (_mode == ProjectMode.Ascii)
+            {
+                <div>
+                    <div class="flex justify-between font-mono text-xs text-slate-300">
+                        <span>Resolution (Cols)</span>
+                        <span class="text-cyan-300">@_asciiWidth ch</span>
+                    </div>
+                    <MudSlider T="int"
+                               Value="_asciiWidth"
+                               ValueChanged="OnAsciiWidthChanged"
+                               Min="16"
+                               Max="160"
+                               Step="4"
+                               Color="Color.Primary" />
+                </div>
+            }
+            else
+            {
+                <div>
+                    <div class="flex justify-between font-mono text-xs text-slate-300">
+                        <span>Grid Resolution</span>
+                        <span class="text-cyan-300">@_pixelGridSize &times; @_pixelGridSize</span>
+                    </div>
+                    <MudSlider T="int"
+                               Value="_pixelGridSize"
+                               ValueChanged="OnPixelGridSizeChanged"
+                               Min="8"
+                               Max="128"
+                               Step="4"
+                               Color="Color.Primary" />
+                </div>
+            }
+
+            <div>
+                <div class="flex justify-between font-mono text-xs text-slate-300">
+                    <span>Brightness</span>
+                    <span class="text-amber-300">@_brightness.ToString("0.00")</span>
+                </div>
+                <MudSlider T="float"
+                           Value="_brightness"
+                           ValueChanged="OnBrightnessChanged"
+                           Min="0.30f"
+                           Max="2.00f"
+                           Step="0.05f"
+                           Color="Color.Secondary" />
+            </div>
+
+            <div>
+                <div class="flex justify-between font-mono text-xs text-slate-300">
+                    <span>Contrast</span>
+                    <span class="text-amber-300">@_contrast.ToString("0.00")</span>
+                </div>
+                <MudSlider T="float"
+                           Value="_contrast"
+                           ValueChanged="OnContrastChanged"
+                           Min="0.30f"
+                           Max="2.00f"
+                           Step="0.05f"
+                           Color="Color.Secondary" />
+            </div>
+
+            <MudSwitch T="bool"
+                       Value="_invertBrightness"
+                       ValueChanged="OnInvertChanged"
+                       Color="Color.Primary"
+                       Label="Invert Brightness"
+                       Size="Size.Small" />
+        </div>
+
+        <MudDivider />
+
+        @* Mode-Specific Presets *@
+        @if (_mode == ProjectMode.Ascii)
+        {
+            <div class="space-y-3">
+                <div class="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                    ASCII Presets
+                </div>
+
+                <MudSelect T="string"
+                           Label="Character Ramp"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Value="_rampPreset"
+                           ValueChanged="OnRampPresetChanged">
+                    <MudSelectItem Value="@("Standard")">Standard (@@%#*+=-:. )</MudSelectItem>
+                    <MudSelectItem Value="@("Dense")">Dense (70-char)</MudSelectItem>
+                    <MudSelectItem Value="@("Blocks")">Blocks (&#9608;&#9619;&#9618;&#9617; )</MudSelectItem>
+                    <MudSelectItem Value="@("Minimal")">Minimal (#+-. )</MudSelectItem>
+                    <MudSelectItem Value="@("Custom")">Custom Ramp</MudSelectItem>
+                </MudSelect>
+
+                @if (_rampPreset == "Custom")
+                {
+                    <MudTextField T="string"
+                                  Label="Custom Character Ramp"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Value="_customRamp"
+                                  ValueChanged="OnCustomRampChanged"
+                                  HelperText="Dense ink (left) to light/empty (right)" />
+                }
+
+                <MudSelect T="AsciiColorMode"
+                           Label="Color Mode"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Value="_asciiColorMode"
+                           ValueChanged="OnAsciiColorModeChanged">
+                    <MudSelectItem Value="AsciiColorMode.FullColorHtml">Full Color HTML</MudSelectItem>
+                    <MudSelectItem Value="AsciiColorMode.MatrixGreen">Matrix Terminal Green</MudSelectItem>
+                    <MudSelectItem Value="AsciiColorMode.Monochrome">Monochrome</MudSelectItem>
+                </MudSelect>
+            </div>
+        }
+        else
+        {
+            <div class="space-y-3">
+                <div class="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                    Retro Palette &amp; Dither
+                </div>
+
+                <MudSelect T="Guid"
+                           Label="Palette (Database)"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Value="_selectedPaletteId"
+                           ValueChanged="OnPaletteChanged">
+                    @foreach (var palette in _palettes)
+                    {
+                        <MudSelectItem Value="@palette.Id">@palette.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                @if (ActivePaletteColors.Length > 0)
+                {
+                    <div class="flex flex-wrap gap-1 rounded border border-[#232838] bg-[#141824] p-2">
+                        @foreach (var hex in ActivePaletteColors)
+                        {
+                            var isPaintActive = string.Equals(_paintHexColor, hex, StringComparison.OrdinalIgnoreCase) && !_paintEraser;
+                            <button type="button"
+                                    title="@($"Select {hex} for Quick Paint")"
+                                    @onclick="() => SelectPaintColor(hex)"
+                                    class="@(isPaintActive ? "ring-2 ring-cyan-400 scale-110" : "border-white/20") h-5 w-5 rounded border transition-transform cursor-pointer"
+                                    style="@($"background-color: {hex};")">
+                            </button>
+                        }
+                    </div>
+                }
+
+                <MudSwitch T="bool"
+                           Value="_applyDithering"
+                           ValueChanged="OnDitheringChanged"
+                           Color="Color.Primary"
+                           Label="Floyd-Steinberg Dithering"
+                           Size="Size.Small" />
+            </div>
+        }
+    </MudPaper>
+
+    @* ===================================================================== *@
+    @* 2. CENTER CANVAS STAGE                                                *@
+    @* ===================================================================== *@
+    <div class="flex flex-1 flex-col overflow-hidden">
+        @* Top Stage Toolbar *@
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#232838] bg-[#0e1118]/90 px-4 py-2">
+            <div class="flex items-center gap-3">
+                <span class="font-mono text-xs font-semibold tracking-wider text-cyan-300">
+                    @(_mode == ProjectMode.Ascii ? "ASCII STAGE" : "PIXEL ART STAGE")
+                </span>
+
+                @if (_mode == ProjectMode.Ascii && _asciiResult is not null)
+                {
+                    <span class="rounded border border-[#232838] bg-[#141824] px-2 py-0.5 font-mono text-[11px] text-slate-300">
+                        @_asciiResult.Columns &times; @_asciiResult.Rows chars
+                    </span>
+                }
+                else if (_mode == ProjectMode.PixelArt && _pixelResult is not null)
+                {
+                    <span class="rounded border border-[#232838] bg-[#141824] px-2 py-0.5 font-mono text-[11px] text-slate-300">
+                        @_pixelResult.Width &times; @_pixelResult.Height px
+                    </span>
+                }
+
+                @if (_isConverting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
+                }
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+                @* Quick Paint Toggle *@
+                <MudSwitch T="bool"
+                           @bind-Value="_quickPaintEnabled"
+                           Color="Color.Secondary"
+                           Label="Quick Paint"
+                           Size="Size.Small" />
+
+                @if (_mode == ProjectMode.Ascii)
+                {
+                    <div class="flex items-center gap-1 rounded border border-[#232838] bg-[#141824] px-1.5 py-0.5 font-mono text-xs">
+                        <span class="text-slate-400">Font</span>
+                        <button type="button" @onclick="() => AdjustAsciiFont(-1)" class="px-1 text-slate-300 hover:text-cyan-300 cursor-pointer">-</button>
+                        <span class="w-9 text-center text-cyan-300">@(_asciiFontSizePx)px</span>
+                        <button type="button" @onclick="() => AdjustAsciiFont(1)" class="px-1 text-slate-300 hover:text-cyan-300 cursor-pointer">+</button>
+                    </div>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.ContentCopy"
+                               Disabled="@(_asciiResult is null)"
+                               OnClick="CopyAsciiPlainTextAsync">
+                        Copy Text
+                    </MudButton>
+                }
+                else
+                {
+                    <MudSwitch T="bool"
+                               @bind-Value="_showPixelGrid"
+                               Color="Color.Primary"
+                               Label="Grid"
+                               Size="Size.Small" />
+                }
+
+                @* Zoom Controls *@
+                <div class="flex items-center gap-1 rounded border border-[#232838] bg-[#141824] px-1.5 py-0.5 font-mono text-xs">
+                    <button type="button" @onclick="() => AdjustZoom(-15)" class="px-1.5 text-slate-300 hover:text-cyan-300 cursor-pointer">-</button>
+                    <button type="button" @onclick="ResetZoom" class="w-11 text-center text-slate-200 hover:text-cyan-300 cursor-pointer">@(_stageZoomPercent)%</button>
+                    <button type="button" @onclick="() => AdjustZoom(15)" class="px-1.5 text-slate-300 hover:text-cyan-300 cursor-pointer">+</button>
+                </div>
+            </div>
+        </div>
+
+        @* Quick Paint Sub-Toolbar *@
+        @if (_quickPaintEnabled)
+        {
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-amber-400/20 bg-amber-400/5 px-4 py-1.5">
+                @if (_mode == ProjectMode.Ascii)
+                {
+                    <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+                        <span class="text-amber-300">QUICK CHAR PAINT:</span>
+                        <label class="text-slate-400">Glyph:</label>
+                        <input type="text"
+                               maxlength="1"
+                               value="@_paintGlyph"
+                               @oninput="OnPaintGlyphInput"
+                               class="h-6 w-8 rounded border border-[#232838] bg-[#141824] text-center font-mono text-xs text-cyan-300 focus:border-cyan-400 focus:outline-none" />
+                        <div class="flex items-center gap-1">
+                            @foreach (var g in _quickAsciiGlyphs)
+                            {
+                                var selected = _paintGlyph == g;
+                                <button type="button"
+                                        @onclick="() => _paintGlyph = g"
+                                        class="@(selected ? "border-cyan-400 bg-cyan-400/15 text-cyan-300" : "border-[#232838] bg-[#141824] text-slate-300") h-6 w-6 rounded border font-mono text-xs cursor-pointer">
+                                    @g
+                                </button>
+                            }
+                        </div>
+                        <label class="ml-2 text-slate-400">Color:</label>
+                        <input type="color"
+                               value="@_paintHexColor"
+                               @oninput="OnPaintColorInput"
+                               class="h-6 w-8 cursor-pointer rounded border border-[#232838] bg-transparent p-0" />
+                    </div>
+                }
+                else
+                {
+                    <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+                        <span class="text-amber-300">QUICK PIXEL PAINT:</span>
+                        <div class="h-5 w-5 rounded border border-white/30"
+                             style="@($"background-color: {(_paintEraser ? "transparent" : _paintHexColor)};")"></div>
+                        <span class="text-slate-300">@(_paintEraser ? "ERASER" : _paintHexColor)</span>
+                        <button type="button"
+                                @onclick="() => _paintEraser = !_paintEraser"
+                                class="@(_paintEraser ? "border-rose-400 bg-rose-400/15 text-rose-300" : "border-[#232838] bg-[#141824] text-slate-300") rounded border px-2 py-0.5 text-[11px] cursor-pointer">
+                            Eraser
+                        </button>
+                        <input type="color"
+                               value="@_paintHexColor"
+                               @oninput="OnPaintColorInput"
+                               class="h-6 w-8 cursor-pointer rounded border border-[#232838] bg-transparent p-0" />
+                    </div>
+                }
+
+                <span class="font-mono text-[11px] text-slate-400">Click any cell on the canvas to paint</span>
+            </div>
+        }
+
+        @* Checkerboard Stage *@
+        <div class="pixcii-checkerboard flex flex-1 items-center justify-center overflow-auto p-6">
+            @if (_mode == ProjectMode.Ascii && _asciiResult is not null)
+            {
+                <div class="rounded-lg border border-[#2a3145] bg-[#0b0d12]/95 p-4 shadow-[0_0_50px_rgba(0,0,0,0.65)]"
+                     style="@($"transform: scale({_stageZoomPercent / 100.0:F2}); transform-origin: center center;")">
+                    @if (_quickPaintEnabled)
+                    {
+                        <pre class="m-0 font-mono leading-[1.15] select-none whitespace-pre"
+                             style="@($"font-size: {_asciiFontSizePx}px;")">@for (var r = 0; r < _asciiResult.Rows; r++)
+                        {
+                            var row = r;
+                            for (var c = 0; c < _asciiResult.Columns; c++)
+                            {
+                                var col = c;
+                                var cell = _asciiResult.Grid[row, col];
+                                <span @onclick="() => PaintAsciiCell(row, col)"
+                                      class="cursor-crosshair hover:outline hover:outline-1 hover:outline-cyan-400/70"
+                                      style="@($"color: {cell.HexColor};")">@cell.Glyph</span>
+                            }
+                            @("\n")
+                        }</pre>
+                    }
+                    else
+                    {
+                        <pre class="m-0 font-mono leading-[1.15] select-text whitespace-pre"
+                             style="@($"font-size: {_asciiFontSizePx}px;")">@((MarkupString)_asciiResult.ColoredHtml)</pre>
+                    }
+                </div>
+            }
+            else if (_mode == ProjectMode.PixelArt && _pixelResult is not null)
+            {
+                var baseWidthPx = Math.Clamp(_pixelResult.Width * 10, 280, 520);
+                var scaledWidthPx = (int)Math.Round(baseWidthPx * (_stageZoomPercent / 100.0));
+                var scaledHeightPx = (int)Math.Round(scaledWidthPx * ((double)_pixelResult.Height / _pixelResult.Width));
+
+                <div class="pixcii-checkerboard relative overflow-hidden rounded-lg border border-[#2a3145] shadow-[0_0_50px_rgba(0,0,0,0.65)]"
+                     style="@($"width: {scaledWidthPx}px; height: {scaledHeightPx}px;")">
+                    <img src="@_pixelResult.DataUrl"
+                         alt="Converted Pixel Art"
+                         class="pixelated block h-full w-full select-none"
+                         style="image-rendering: pixelated;" />
+
+                    @if (_showPixelGrid)
+                    {
+                        <div class="pointer-events-none absolute inset-0 opacity-30"
+                             style="@($"background-image: linear-gradient(to right, #94a3b8 1px, transparent 1px), linear-gradient(to bottom, #94a3b8 1px, transparent 1px); background-size: calc(100% / {_pixelResult.Width}) calc(100% / {_pixelResult.Height});")">
+                        </div>
+                    }
+
+                    @if (_quickPaintEnabled)
+                    {
+                        <div class="absolute inset-0 grid"
+                             style="@($"grid-template-columns: repeat({_pixelResult.Width}, minmax(0, 1fr)); grid-template-rows: repeat({_pixelResult.Height}, minmax(0, 1fr));")">
+                            @for (var r = 0; r < _pixelResult.Height; r++)
+                            {
+                                var row = r;
+                                @for (var c = 0; c < _pixelResult.Width; c++)
+                                {
+                                    var col = c;
+                                    <button type="button"
+                                            title="@($"({col}, {row})")"
+                                            @onclick="() => PaintPixelCell(row, col)"
+                                            class="h-full w-full border-0 bg-transparent p-0 cursor-crosshair hover:bg-white/20">
+                                    </button>
+                                }
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="rounded-lg border border-[#232838] bg-[#0e1118]/90 px-6 py-5 text-center font-mono text-xs text-slate-400">
+                    Upload a PNG, JPG, or WebP image from the left inspector to begin.
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private const long MaxUploadSizeBytes = 5 * 1024 * 1024; // 5 MB
+
+    private static readonly char[] _quickAsciiGlyphs = ['@', '#', '%', '*', '+', '=', '-', ':', '.', ' '];
+
+    private ProjectMode _mode = ProjectMode.Ascii;
+    private byte[]? _sourceBytes;
+    private string _sourceFileName = "sample-synthwave.png";
+
+    // Conversion tuning parameters
+    private int _asciiWidth = 64;
+    private int _pixelGridSize = 32;
+    private float _brightness = 1.0f;
+    private float _contrast = 1.0f;
+    private bool _invertBrightness;
+
+    // ASCII options
+    private string _rampPreset = "Standard";
+    private string _customRamp = AsciiRamps.Standard;
+    private AsciiColorMode _asciiColorMode = AsciiColorMode.FullColorHtml;
+
+    // Pixel Art options (loaded from EF Core database)
+    private IReadOnlyList<CustomPalette> _palettes = [];
+    private Guid _selectedPaletteId;
+    private bool _applyDithering;
+
+    // Stage viewport & Quick Paint state
+    private bool _isConverting;
+    private bool _quickPaintEnabled;
+    private bool _showPixelGrid = true;
+    private int _asciiFontSizePx = 11;
+    private int _stageZoomPercent = 100;
+    private char _paintGlyph = '@';
+    private string _paintHexColor = "#22D3EE";
+    private bool _paintEraser;
+
+    // Conversion outputs
+    private AsciiResult? _asciiResult;
+    private PixelArtResult? _pixelResult;
+
+    private CancellationTokenSource? _debounceCts;
+
+    private string[] ActivePaletteColors =>
+        _palettes.FirstOrDefault(p => p.Id == _selectedPaletteId)?.HexColors ?? ["#0F380F", "#306230", "#8BAC0F", "#9BBC0F"];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _palettes = await ProjectService.GetPalettesAsync();
+        if (_palettes.Count > 0)
+        {
+            var pico8 = _palettes.FirstOrDefault(p => p.Name == "PICO-8") ?? _palettes[0];
+            _selectedPaletteId = pico8.Id;
+        }
+
+        await LoadSampleImageAsync();
+    }
+
+    private async Task LoadSampleImageAsync()
+    {
+        _sourceBytes = MediaConversionService.CreateSampleArtworkPng(128);
+        _sourceFileName = "sample-synthwave.png";
+        await RunConversionAsync(CancellationToken.None);
+    }
+
+    private async Task OnFileUploadedAsync(IBrowserFile? file)
+    {
+        if (file is null)
+        {
+            return;
+        }
+
+        if (file.Size > MaxUploadSizeBytes)
+        {
+            Snackbar.Add("Image exceeds the 5 MB limit.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            await using var stream = file.OpenReadStream(MaxUploadSizeBytes);
+            await using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+
+            _sourceBytes = ms.ToArray();
+            _sourceFileName = file.Name;
+            await RunConversionAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load image: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Task OnModeChanged(ProjectMode mode)
+    {
+        _mode = mode;
+        StudioState.SetMode(mode == ProjectMode.Ascii ? CanvasMode.Ascii : CanvasMode.Pixel);
+        return RunConversionAsync(CancellationToken.None);
+    }
+
+    private void OnAsciiWidthChanged(int value)
+    {
+        _asciiWidth = value;
+        ScheduleDebouncedConversion();
+    }
+
+    private void OnPixelGridSizeChanged(int value)
+    {
+        _pixelGridSize = value;
+        ScheduleDebouncedConversion();
+    }
+
+    private void OnBrightnessChanged(float value)
+    {
+        _brightness = value;
+        ScheduleDebouncedConversion();
+    }
+
+    private void OnContrastChanged(float value)
+    {
+        _contrast = value;
+        ScheduleDebouncedConversion();
+    }
+
+    private void OnInvertChanged(bool value)
+    {
+        _invertBrightness = value;
+        ScheduleDebouncedConversion();
+    }
+
+    private void OnRampPresetChanged(string preset)
+    {
+        _rampPreset = preset;
+        if (preset != "Custom")
+        {
+            _customRamp = ResolveRamp(preset);
+        }
+        ScheduleDebouncedConversion();
+    }
+
+    private void OnCustomRampChanged(string value)
+    {
+        _customRamp = string.IsNullOrEmpty(value) ? AsciiRamps.Standard : value;
+        ScheduleDebouncedConversion();
+    }
+
+    private void OnAsciiColorModeChanged(AsciiColorMode colorMode)
+    {
+        _asciiColorMode = colorMode;
+        ScheduleDebouncedConversion();
+    }
+
+    private void OnPaletteChanged(Guid paletteId)
+    {
+        _selectedPaletteId = paletteId;
+        var colors = ActivePaletteColors;
+        if (colors.Length > 0)
+        {
+            _paintHexColor = colors[0];
+        }
+        ScheduleDebouncedConversion();
+    }
+
+    private void OnDitheringChanged(bool enabled)
+    {
+        _applyDithering = enabled;
+        ScheduleDebouncedConversion();
+    }
+
+    private void ScheduleDebouncedConversion()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+        _ = DebounceAndConvertAsync(token);
+    }
+
+    private async Task DebounceAndConvertAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(120, token);
+            await InvokeAsync(() => RunConversionAsync(token));
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by newer slider input.
+        }
+    }
+
+    private async Task RunConversionAsync(CancellationToken token)
+    {
+        if (_sourceBytes is null || _sourceBytes.Length == 0)
+        {
+            return;
+        }
+
+        _isConverting = true;
+        StateHasChanged();
+
+        try
+        {
+            var bytes = _sourceBytes;
+            if (_mode == ProjectMode.Ascii)
+            {
+                var ramp = _rampPreset == "Custom" ? _customRamp : ResolveRamp(_rampPreset);
+                var result = await Task.Run(
+                    () => ConversionService.ConvertToAsciiAsync(
+                        bytes,
+                        targetWidth: _asciiWidth,
+                        characterRamp: ramp,
+                        invertBrightness: _invertBrightness,
+                        colorMode: _asciiColorMode,
+                        brightness: _brightness,
+                        contrast: _contrast,
+                        ct: token),
+                    token);
+
+                if (!token.IsCancellationRequested)
+                {
+                    _asciiResult = result;
+                }
+            }
+            else
+            {
+                var palette = ActivePaletteColors;
+                var result = await Task.Run(
+                    () => ConversionService.ConvertToPixelArtAsync(
+                        bytes,
+                        gridSize: _pixelGridSize,
+                        hexPalette: palette,
+                        applyDithering: _applyDithering,
+                        brightness: _brightness,
+                        contrast: _contrast,
+                        invertBrightness: _invertBrightness,
+                        ct: token),
+                    token);
+
+                if (!token.IsCancellationRequested)
+                {
+                    _pixelResult = result;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Ignore cancelled conversion runs.
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Conversion error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isConverting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void PaintAsciiCell(int row, int col)
+    {
+        if (_asciiResult is null)
+        {
+            return;
+        }
+
+        _asciiResult.Grid[row, col] = new AsciiCell(_paintGlyph, _paintHexColor);
+        var (plainText, coloredHtml) = MediaConversionService.BuildAsciiTextAndHtml(_asciiResult.Grid, _asciiColorMode);
+        _asciiResult = _asciiResult with { PlainText = plainText, ColoredHtml = coloredHtml };
+    }
+
+    private void PaintPixelCell(int row, int col)
+    {
+        if (_pixelResult is null)
+        {
+            return;
+        }
+
+        _pixelResult.HexGrid[row, col] = _paintEraser ? string.Empty : _paintHexColor;
+        _pixelResult = MediaConversionService.RenderHexGridToPixelArt(_pixelResult.HexGrid);
+    }
+
+    private void SelectPaintColor(string hex)
+    {
+        _paintEraser = false;
+        _paintHexColor = hex;
+        StudioState.SetPrimaryColor(hex);
+    }
+
+    private void OnPaintGlyphInput(ChangeEventArgs e)
+    {
+        var str = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(str))
+        {
+            _paintGlyph = str[0];
+            StudioState.SetActiveGlyph(_paintGlyph);
+        }
+    }
+
+    private void OnPaintColorInput(ChangeEventArgs e)
+    {
+        var hex = e.Value?.ToString();
+        if (!string.IsNullOrWhiteSpace(hex))
+        {
+            SelectPaintColor(hex.ToUpperInvariant());
+        }
+    }
+
+    private void AdjustAsciiFont(int delta)
+        => _asciiFontSizePx = Math.Clamp(_asciiFontSizePx + delta, 6, 28);
+
+    private void AdjustZoom(int delta)
+        => _stageZoomPercent = Math.Clamp(_stageZoomPercent + delta, 40, 250);
+
+    private void ResetZoom() => _stageZoomPercent = 100;
+
+    private async Task CopyAsciiPlainTextAsync()
+    {
+        if (_asciiResult is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _asciiResult.PlainText);
+            Snackbar.Add("Copied plain-text ASCII to clipboard.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Clipboard copy failed in this browser context.", Severity.Warning);
+        }
+    }
+
+    private static string ResolveRamp(string preset) => preset switch
+    {
+        "Dense" => AsciiRamps.Dense,
+        "Blocks" => AsciiRamps.Blocks,
+        "Minimal" => AsciiRamps.Minimal,
+        _ => AsciiRamps.Standard
+    };
+
+    public void Dispose()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+    }
+}

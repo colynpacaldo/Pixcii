@@ -6,6 +6,15 @@ namespace Pixcii.Services;
 
 public sealed class ProjectService(IDbContextFactory<AppDbContext> dbFactory)
 {
+    public async Task<IReadOnlyList<CustomPalette>> GetPalettesAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.CustomPalettes
+            .AsNoTracking()
+            .OrderBy(p => p.Name)
+            .ToListAsync(ct);
+    }
+
     public async Task<StudioProject> CreateProjectAsync(
         string title,
         string authorName,

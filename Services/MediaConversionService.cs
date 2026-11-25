@@ -33,6 +33,8 @@ public sealed class MediaConversionService
         bool invertBrightness = false,
         AsciiColorMode colorMode = AsciiColorMode.FullColorHtml,
         double fontAspectRatio = DefaultFontAspectRatio,
+        float brightness = 1.0f,
+        float contrast = 1.0f,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(imageBytes);
@@ -49,6 +51,8 @@ public sealed class MediaConversionService
             invertBrightness,
             colorMode,
             fontAspectRatio,
+            brightness,
+            contrast,
             ct);
     }
 
@@ -62,6 +66,8 @@ public sealed class MediaConversionService
         bool invertBrightness = false,
         AsciiColorMode colorMode = AsciiColorMode.FullColorHtml,
         double fontAspectRatio = DefaultFontAspectRatio,
+        float brightness = 1.0f,
+        float contrast = 1.0f,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(imageStream);
@@ -72,17 +78,32 @@ public sealed class MediaConversionService
         }
 
         var clampedWidth = Math.Clamp(targetWidth, 1, 512);
+        var clampedBrightness = Math.Clamp(brightness, 0.1f, 3.0f);
+        var clampedContrast = Math.Clamp(contrast, 0.1f, 3.0f);
 
         using var image = await Image.LoadAsync<Rgba32>(imageStream, ct);
         var targetHeight = CalculateAspectAdjustedHeight(image.Width, image.Height, clampedWidth, fontAspectRatio);
 
-        // Downsample using Box resampling so each character cell averages the source block smoothly.
-        image.Mutate(ctx => ctx.Resize(new ResizeOptions
+        // Downsample using Box resampling and apply tonal adjustments before luminance sampling.
+        image.Mutate(ctx =>
         {
-            Size = new Size(clampedWidth, targetHeight),
-            Mode = ResizeMode.Stretch,
-            Sampler = KnownResamplers.Box
-        }));
+            ctx.Resize(new ResizeOptions
+            {
+                Size = new Size(clampedWidth, targetHeight),
+                Mode = ResizeMode.Stretch,
+                Sampler = KnownResamplers.Box
+            });
+
+            if (Math.Abs(clampedBrightness - 1.0f) > 0.001f)
+            {
+                ctx.Brightness(clampedBrightness);
+            }
+
+            if (Math.Abs(clampedContrast - 1.0f) > 0.001f)
+            {
+                ctx.Contrast(clampedContrast);
+            }
+        });
 
         var grid = new AsciiCell[targetHeight, clampedWidth];
         var plainBuilder = new StringBuilder(targetHeight * (clampedWidth + 1));
@@ -172,6 +193,9 @@ public sealed class MediaConversionService
         IReadOnlyList<string>? hexPalette = null,
         bool applyDithering = false,
         PixelResampleMode resampleMode = PixelResampleMode.Box,
+        float brightness = 1.0f,
+        float contrast = 1.0f,
+        bool invertBrightness = false,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(imageBytes);
@@ -187,6 +211,9 @@ public sealed class MediaConversionService
             hexPalette,
             applyDithering,
             resampleMode,
+            brightness,
+            contrast,
+            invertBrightness,
             ct);
     }
 
@@ -200,6 +227,9 @@ public sealed class MediaConversionService
         IReadOnlyList<string>? hexPalette = null,
         bool applyDithering = false,
         PixelResampleMode resampleMode = PixelResampleMode.Box,
+        float brightness = 1.0f,
+        float contrast = 1.0f,
+        bool invertBrightness = false,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(imageStream);
@@ -211,6 +241,8 @@ public sealed class MediaConversionService
 
         var palette = ParsePalette(hexPalette);
         var clampedGrid = Math.Clamp(gridSize, 4, 256);
+        var clampedBrightness = Math.Clamp(brightness, 0.1f, 3.0f);
+        var clampedContrast = Math.Clamp(contrast, 0.1f, 3.0f);
 
         using var source = await Image.LoadAsync<Rgba32>(imageStream, ct);
 
@@ -221,12 +253,30 @@ public sealed class MediaConversionService
             ? KnownResamplers.NearestNeighbor
             : KnownResamplers.Box;
 
-        source.Mutate(ctx => ctx.Resize(new ResizeOptions
+        source.Mutate(ctx =>
         {
-            Size = new Size(targetWidth, targetHeight),
-            Mode = ResizeMode.Stretch,
-            Sampler = sampler
-        }));
+            ctx.Resize(new ResizeOptions
+            {
+                Size = new Size(targetWidth, targetHeight),
+                Mode = ResizeMode.Stretch,
+                Sampler = sampler
+            });
+
+            if (Math.Abs(clampedBrightness - 1.0f) > 0.001f)
+            {
+                ctx.Brightness(clampedBrightness);
+            }
+
+            if (Math.Abs(clampedContrast - 1.0f) > 0.001f)
+            {
+                ctx.Contrast(clampedContrast);
+            }
+
+            if (invertBrightness)
+            {
+                ctx.Invert();
+            }
+        });
 
         var hexGrid = new string[targetHeight, targetWidth];
         using var quantized = new Image<Rgba32>(targetWidth, targetHeight);
@@ -263,6 +313,179 @@ public sealed class MediaConversionService
             UpscaledHeight: upscaledHeight,
             Base64Png: base64Png,
             HexGrid: hexGrid);
+    }
+
+    /// <summary>
+    /// Rebuilds PlainText and run-length-batched ColoredHtml from an edited <see cref="AsciiCell"/> grid.
+    /// </summary>
+    public static (string PlainText, string ColoredHtml) BuildAsciiTextAndHtml(
+        AsciiCell[,] grid,
+        AsciiColorMode colorMode)
+    {
+        ArgumentNullException.ThrowIfNull(grid);
+        var rows = grid.GetLength(0);
+        var cols = grid.GetLength(1);
+
+        var plainBuilder = new StringBuilder(rows * (cols + 1));
+        var htmlBuilder = new StringBuilder(rows * cols * 12);
+
+        for (var y = 0; y < rows; y++)
+        {
+            string? activeRunColor = null;
+            var runText = new StringBuilder(cols);
+
+            for (var x = 0; x < cols; x++)
+            {
+                var cell = grid[y, x];
+                plainBuilder.Append(cell.Glyph);
+
+                if (colorMode == AsciiColorMode.Monochrome)
+                {
+                    runText.Append(cell.Glyph);
+                    continue;
+                }
+
+                if (activeRunColor is null)
+                {
+                    activeRunColor = cell.HexColor;
+                    runText.Append(cell.Glyph);
+                }
+                else if (string.Equals(activeRunColor, cell.HexColor, StringComparison.Ordinal))
+                {
+                    runText.Append(cell.Glyph);
+                }
+                else
+                {
+                    AppendColoredSpan(htmlBuilder, activeRunColor, runText);
+                    runText.Clear();
+                    activeRunColor = cell.HexColor;
+                    runText.Append(cell.Glyph);
+                }
+            }
+
+            if (colorMode == AsciiColorMode.Monochrome)
+            {
+                htmlBuilder.Append(WebUtility.HtmlEncode(runText.ToString()));
+            }
+            else if (runText.Length > 0 && activeRunColor is not null)
+            {
+                AppendColoredSpan(htmlBuilder, activeRunColor, runText);
+            }
+
+            if (y < rows - 1)
+            {
+                plainBuilder.Append('\n');
+                htmlBuilder.Append('\n');
+            }
+        }
+
+        return (plainBuilder.ToString(), htmlBuilder.ToString());
+    }
+
+    /// <summary>
+    /// Re-renders an edited 2D hex color grid into a crisp NearestNeighbor-upscaled Base64 PNG.
+    /// Useful after interactive pixel-paint edits on the canvas.
+    /// </summary>
+    public static PixelArtResult RenderHexGridToPixelArt(string[,] hexGrid)
+    {
+        ArgumentNullException.ThrowIfNull(hexGrid);
+        var height = hexGrid.GetLength(0);
+        var width = hexGrid.GetLength(1);
+
+        using var buffer = new Image<Rgba32>(width, height);
+        buffer.ProcessPixelRows(accessor =>
+        {
+            for (var y = 0; y < height; y++)
+            {
+                var row = accessor.GetRowSpan(y);
+                for (var x = 0; x < width; x++)
+                {
+                    var hex = hexGrid[y, x];
+                    row[x] = string.IsNullOrWhiteSpace(hex)
+                        ? new Rgba32(0, 0, 0, 0)
+                        : ParseHexColor(hex);
+                }
+            }
+        });
+
+        var scaleFactor = Math.Max(1, DefaultMinPreviewDimension / Math.Max(width, height));
+        var upscaledWidth = width * scaleFactor;
+        var upscaledHeight = height * scaleFactor;
+
+        using var upscaled = buffer.Clone(ctx => ctx.Resize(new ResizeOptions
+        {
+            Size = new Size(upscaledWidth, upscaledHeight),
+            Mode = ResizeMode.Stretch,
+            Sampler = KnownResamplers.NearestNeighbor
+        }));
+
+        using var pngStream = new MemoryStream();
+        upscaled.SaveAsPng(pngStream);
+
+        return new PixelArtResult(
+            Width: width,
+            Height: height,
+            UpscaledWidth: upscaledWidth,
+            UpscaledHeight: upscaledHeight,
+            Base64Png: Convert.ToBase64String(pngStream.ToArray()),
+            HexGrid: hexGrid);
+    }
+
+    /// <summary>
+    /// Generates a synthetic retro sample PNG in memory so users can test the studio immediately.
+    /// </summary>
+    public static byte[] CreateSampleArtworkPng(int size = 128)
+    {
+        using var img = new Image<Rgba32>(size, size);
+        var cx = size / 2.0;
+        var cy = size / 2.0;
+        var radius = size * 0.36;
+
+        img.ProcessPixelRows(accessor =>
+        {
+            for (var y = 0; y < size; y++)
+            {
+                var row = accessor.GetRowSpan(y);
+                for (var x = 0; x < size; x++)
+                {
+                    var dx = x - cx;
+                    var dy = y - cy;
+                    var dist = Math.Sqrt((dx * dx) + (dy * dy));
+
+                    if (dist <= radius)
+                    {
+                        // Shaded synthwave orb
+                        var light = Math.Clamp(1.0 - (Math.Sqrt(Math.Pow(x - cx * 0.72, 2) + Math.Pow(y - cy * 0.68, 2)) / (radius * 1.45)), 0.0, 1.0);
+                        var r = (byte)(40 + light * 215);
+                        var g = (byte)(20 + light * 165);
+                        var b = (byte)(120 + (1.0 - light) * 135);
+                        row[x] = new Rgba32(r, g, b, 255);
+                    }
+                    else
+                    {
+                        // Deep gradient sky + retro horizon grid
+                        var skyT = (double)y / size;
+                        var isHorizonLine = y > size * 0.66 && (y % 8 == 0 || (x - (size / 2)) % 12 == 0);
+                        if (isHorizonLine)
+                        {
+                            row[x] = new Rgba32(34, 211, 238, 255);
+                        }
+                        else
+                        {
+                            row[x] = new Rgba32(
+                                (byte)(12 + skyT * 36),
+                                (byte)(14 + skyT * 18),
+                                (byte)(28 + skyT * 48),
+                                255);
+                        }
+                    }
+                }
+            }
+        });
+
+        using var ms = new MemoryStream();
+        img.SaveAsPng(ms);
+        return ms.ToArray();
     }
 
     // -------------------------------------------------------------------------

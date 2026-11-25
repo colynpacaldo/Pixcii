@@ -41,6 +41,14 @@ builder.Services.AddSingleton<MediaConversionService>();
 
 var app = builder.Build();
 
+// Ensure database schema and seed palettes exist at startup.
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+    await using var db = await dbFactory.CreateDbContextAsync();
+    await db.Database.MigrateAsync();
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {

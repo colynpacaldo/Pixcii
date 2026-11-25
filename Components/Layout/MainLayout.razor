@@ -1,4 +1,4 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @implements IDisposable
 @inject StudioStateService StudioState
 @inject ISnackbar Snackbar
@@ -154,9 +154,9 @@
         </div>
     </MudDrawer>
 
-    @* Tailwind-Styled Centered Canvas Workspace Area *@
+    @* Tailwind-Styled Workspace Area *@
     <MudMainContent Class="flex h-screen flex-col overflow-hidden">
-        <div class="pixcii-workspace-dots flex flex-1 items-center justify-center overflow-auto p-6">
+        <div class="pixcii-workspace-dots flex flex-1 overflow-hidden">
             @Body
         </div>
 
@@ -181,7 +181,7 @@
 </div>
 
 @code {
-    private bool _drawerOpen = true;
+    private bool _drawerOpen = false;
 
     private static readonly char[] _quickGlyphs = ['@', '#', '%', '*', '+', ':', '.', '/', '\\', '|', '-', '~'];
 
